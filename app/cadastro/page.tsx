@@ -11,6 +11,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useProductTypes } from "@/hooks/use-product-types"
 import type { Product } from "@/types/product"
 
+// ✅ IMPORTS CORRETOS
 import {
   cadastrarProdutoWebHook,
   editarProdutoWebHook,
@@ -56,10 +57,10 @@ export default function CadastroPage() {
     await cadastrarProdutoWebHook({
       nome: productData.nome,
       tipo: productData.tipo,
-      preco: Number(productData.preco),
+      preco: Number(productData.preco), // já em centavos
       ingredientes: productData.ingredientes || null,
-      disponivel: true,
       local_preparo: productData.local_preparo,
+      disponivel: true,
     })
     setIsFormOpen(false)
     loadProducts()
@@ -72,8 +73,8 @@ export default function CadastroPage() {
       tipo: productData.tipo,
       preco: Number(productData.preco),
       ingredientes: productData.ingredientes || null,
-      disponivel: productData.disponivel,
       local_preparo: productData.local_preparo,
+      disponivel: productData.disponivel,
     })
     setIsFormOpen(false)
     setEditingProduct(null)
@@ -82,7 +83,7 @@ export default function CadastroPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este produto?")) return
-    await deletarProdutoWebHook({ id })
+    await deletarProdutoWebHook({ id }) // ✅ payload correto
     loadProducts()
   }
 
@@ -94,7 +95,7 @@ export default function CadastroPage() {
       preco: p.preco,
       ingredientes: p.ingredientes,
       local_preparo: p.local_preparo,
-      disponivel: !p.disponivel,
+      disponivel: !p.disponivel, // ✅ apenas alterna
     })
     loadProducts()
   }

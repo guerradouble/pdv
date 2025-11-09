@@ -4,18 +4,18 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Plus, Download, FileText, ArrowLeft } from "lucide-react"
+import { Plus, ArrowLeft } from "lucide-react"
 import { ProductForm } from "@/components/product-form"
 import { ProductCard } from "@/components/product-card"
-import { exportToPDF, exportToCSV } from "@/lib/export-utils"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useProductTypes } from "@/hooks/use-product-types"
 import type { Product } from "@/types/product"
+
 import {
   cadastrarProdutoWebHook,
   editarProdutoWebHook,
   deletarProdutoWebHook,
-} from "@/lib/n8n"
+} from "@/app/actions/n8n-actions"
 
 export default function CadastroPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -58,8 +58,8 @@ export default function CadastroPage() {
       tipo: productData.tipo,
       preco: Number(productData.preco),
       ingredientes: productData.ingredientes || null,
-      local_preparo: productData.local_preparo,
       disponivel: true,
+      local_preparo: productData.local_preparo,
     })
     setIsFormOpen(false)
     loadProducts()
@@ -72,6 +72,7 @@ export default function CadastroPage() {
       tipo: productData.tipo,
       preco: Number(productData.preco),
       ingredientes: productData.ingredientes || null,
+      disponivel: productData.disponivel,
       local_preparo: productData.local_preparo,
     })
     setIsFormOpen(false)
@@ -81,12 +82,20 @@ export default function CadastroPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este produto?")) return
-    await deletarProdutoWebHook(id)
+    await deletarProdutoWebHook({ id })
     loadProducts()
   }
 
   const handleToggleDisponivel = async (p: Product) => {
-    await editarProdutoWebHook({ id: p.id, disponivel: !p.disponivel })
+    await editarProdutoWebHook({
+      id: p.id,
+      nome: p.nome,
+      tipo: p.tipo,
+      preco: p.preco,
+      ingredientes: p.ingredientes,
+      local_preparo: p.local_preparo,
+      disponivel: !p.disponivel,
+    })
     loadProducts()
   }
 

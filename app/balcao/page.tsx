@@ -11,7 +11,9 @@ import { OrderList } from "@/components/order-list"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { Product } from "@/types/product"
 import type { Order, OrderFormData } from "@/types/order"
-import { enviarItemParaCozinha } from "@/lib/n8n"
+
+// ✅ ALTERADO AQUI
+import { enviarItemParaCozinha } from "@/app/actions/n8n-actions"
 
 export default function BalcaoPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -76,7 +78,6 @@ export default function BalcaoPage() {
 
   const handleAddOrder = async (orderData: OrderFormData) => {
     try {
-      // 1) cria pedido
       const { data: pedido, error: pedidoErr } = await supabase
         .from("pedidos_balcao")
         .insert([{ nome_cliente: orderData.nome_cliente || "Balcão", mesa: orderData.mesa || null }])
@@ -84,7 +85,6 @@ export default function BalcaoPage() {
         .single()
       if (pedidoErr || !pedido) throw pedidoErr || new Error("Pedido não criado")
 
-      // 2) cria itens
       const itensInsert = orderData.itens.map((item) => ({
         pedido_id: pedido.id,
         produto_id: item.produto_id,
@@ -98,7 +98,6 @@ export default function BalcaoPage() {
       const { error: itensErr } = await supabase.from("pedidos_balcao_itens").insert(itensInsert)
       if (itensErr) throw itensErr
 
-      // 3) dispara cozinha via n8n (um POST por item)
       for (const it of orderData.itens) {
         await enviarItemParaCozinha({
           pedido_id: pedido.id,
@@ -130,18 +129,4 @@ export default function BalcaoPage() {
           <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Voltar
           </Link>
-          <h1 className="text-xl font-semibold">Balcão</h1>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8 space-y-8">
-        <OrderForm products={products} onSubmit={handleAddOrder} />
-        {isLoading ? (
-          <p className="text-center text-muted-foreground">Carregando pedidos...</p>
-        ) : (
-          <OrderList orders={orders} onMarkAsReady={marcarComoPronto} />
-        )}
-      </main>
-    </div>
-  )
-}
+          <h1

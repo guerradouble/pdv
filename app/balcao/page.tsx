@@ -11,8 +11,6 @@ import { OrderList } from "@/components/order-list"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { Product } from "@/types/product"
 import type { Order, OrderFormData } from "@/types/order"
-
-// ✅ ALTERADO AQUI
 import { enviarItemParaCozinha } from "@/app/actions/n8n-actions"
 
 export default function BalcaoPage() {
@@ -78,12 +76,11 @@ export default function BalcaoPage() {
 
   const handleAddOrder = async (orderData: OrderFormData) => {
     try {
-      const { data: pedido, error: pedidoErr } = await supabase
+      const { data: pedido } = await supabase
         .from("pedidos_balcao")
         .insert([{ nome_cliente: orderData.nome_cliente || "Balcão", mesa: orderData.mesa || null }])
         .select()
         .single()
-      if (pedidoErr || !pedido) throw pedidoErr || new Error("Pedido não criado")
 
       const itensInsert = orderData.itens.map((item) => ({
         pedido_id: pedido.id,
@@ -95,8 +92,7 @@ export default function BalcaoPage() {
         cliente_nome: orderData.nome_cliente || null,
         mesa: orderData.mesa || null,
       }))
-      const { error: itensErr } = await supabase.from("pedidos_balcao_itens").insert(itensInsert)
-      if (itensErr) throw itensErr
+      await supabase.from("pedidos_balcao_itens").insert(itensInsert)
 
       for (const it of orderData.itens) {
         await enviarItemParaCozinha({
@@ -106,13 +102,13 @@ export default function BalcaoPage() {
           quantidade: it.quantidade,
           mesa: orderData.mesa || null,
           cliente_nome: orderData.nome_cliente || null,
+          canal: "balcao",
         })
       }
 
-      alert("Pedido registrado com sucesso!")
       loadOrders()
     } catch (err) {
-      console.error("Error adding order:", err)
+      console.error(err)
       alert("Erro ao registrar pedido.")
     }
   }
@@ -129,4 +125,18 @@ export default function BalcaoPage() {
           <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Voltar
           </Link>
-          <h1
+          <h1 className="text-xl font-semibold">Balcão</h1>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8 space-y-8">
+        <OrderForm products={products} onSubmit={handleAddOrder} />
+        {isLoading ? (
+          <p className="text-center text-muted-foreground">Carregando pedidos...</p>
+        ) : (
+          <OrderList orders={orders} onMarkAsReady={marcarComoPronto} />
+        )}
+      </main>
+    </div>
+  )
+}

@@ -45,16 +45,38 @@ export async function atualizarStatusCozinha(payload: any) {
   });
 }
 
-/* ✅ NOVO: Alternar Disponibilidade (DISPONÍVEL / INDISPONÍVEL) */
+/* ✅ ALTERNA DISPONIBILIDADE (Disponível/Indisponível) */
 export async function toggleDisponibilidadeWebHook(id: string, disponivel: boolean) {
   const url = process.env.N8N_WEBHOOK_TOGGLE_DISPONIVEL;
 
-  await fetch(url!, {
+  if (!url) {
+    console.error("❌ Variável N8N_WEBHOOK_TOGGLE_DISPONIVEL não configurada.");
+    return;
+  }
+
+  await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       id,
       disponivel,
+    }),
+  });
+}
+
+/* ✅ SINCRONIZA COM O WEBHOOK DE EDIÇÃO (para RAG / PDV / Delivery / etc) */
+export async function syncDisponibilidadeComWebhookEditar(id: string, disponivel: boolean) {
+  const url = process.env.N8N_WEBHOOK_EDITAR;
+
+  if (!url) return;
+
+  await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id,
+      disponivel,
+      origem: "toggle_disponibilidade"
     }),
   });
 }

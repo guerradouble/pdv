@@ -11,7 +11,6 @@ import { OrderList } from "@/components/order-list"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { Product } from "@/types/product"
 import type { Order, OrderFormData } from "@/types/order"
-import { criarPedidoBalcaoWebHook } from "@/app/actions/n8n-actions" // ✅ NOVO
 
 export default function BalcaoPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -74,31 +73,35 @@ export default function BalcaoPage() {
     }
   }
 
-  // ✅ Agora o PDV NÃO insere direto no banco — envia para o n8n
+  // ✅ Agora o PDV chama um API Route (server-side) em vez de importar Server Action no client
   const handleAddOrder = async (orderData: OrderFormData) => {
     try {
-      // orderData.items já vem do OrderForm (foi padronizado)
-      const payload = {
-        nome_cliente: orderData.nome_cliente?.trim() || "Balcão",
-        telefone: orderData.telefone || null,
-        mesa: orderData.mesa || null,
-        canal: "balcao",
-        // normaliza itens e força numérico em preco/quantidade
-        items: (orderData.items || []).map((it) => ({
-          produto_id: it.produto_id,
-          produto_nome: it.produto_nome,
-          produto_preco: Number(it.produto_preco), // banco espera decimal (numeric(10,2))
-          quantidade: Number(it.quantidade),
-        })),
+      const res = await fetch("/api/n8n/balcao-criar-pedido", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome_cliente: orderData.nome_cliente?.trim() || "Balcão",
+          telefone: orderData.telefone || null,
+          mesa: orderData.mesa || null,
+          canal: "balcao",
+          items: (orderData.items || []).map((it) => ({
+            produto_id: it.produto_id,
+            produto_nome: it.produto_nome,
+            produto_preco: Number(it.produto_preco),
+            quantidade: Number(it.quantidade),
+          })),
+        }),
+      })
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "")
+        throw new Error(`Falha ao criar pedido (${res.status}): ${txt}`)
       }
 
-      await criarPedidoBalcaoWebHook(payload) // 🔥 dispara para o n8n
-
-      // Recarrega a lista (o realtime também deve refletir)
       await loadOrders()
     } catch (err) {
       console.error(err)
-      alert("Erro ao registrar pedido via n8n.")
+      alert("Erro ao registrar pedido.")
     }
   }
 
@@ -118,10 +121,13 @@ export default function BalcaoPage() {
         {isLoading ? (
           <p className="text-center text-muted-foreground">Carregando pedidos...</p>
         ) : (
-          <OrderList orders={orders} onMarkAsReady={async (id) => {
-            await supabase.from("pedidos_balcao").update({ status: "pronto" }).eq("id", id)
-            loadOrders()
-          }} />
+          <OrderList
+            orders={orders}
+            onMarkAsReady={async (id) => {
+              await supabase.from("pedidos_balcao").update({ status: "pronto" }).eq("id", id)
+              loadOrders()
+            }}
+          />
         )}
       </main>
     </div>

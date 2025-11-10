@@ -28,7 +28,7 @@ export async function editarProdutoWebHook(payload: any) {
 }
 
 export async function deletarProdutoWebHook(id: string) {
-  const url = process.env.N8N_WEBHOOK_DELETAR_PRODUTO; // ✅ CORRIGIDO
+  const url = process.env.N8N_WEBHOOK_DELETAR_PRODUTO;
   await fetch(url!, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -42,5 +42,19 @@ export async function atualizarStatusCozinha(payload: any) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+  });
+}
+
+/* ✅ NOVO: Alternar Disponibilidade (DISPONÍVEL / INDISPONÍVEL) */
+export async function toggleDisponibilidadeWebHook(id: string, disponivel: boolean) {
+  const url = process.env.N8N_WEBHOOK_TOGGLE_DISPONIVEL;
+
+  await fetch(url!, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id,
+      disponivel,
+    }),
   });
 }

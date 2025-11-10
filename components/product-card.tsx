@@ -4,16 +4,24 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Pencil, Trash2, UtensilsCrossed, Store } from "lucide-react"
 import type { Product } from "@/types/product"
+import { toggleDisponibilidadeWebHook } from "@/app/actions/n8n-actions"
+import { useTransition } from "react"
 
 interface ProductCardProps {
   product: Product
   onEdit: (product: Product) => void
   onDelete: (id: string) => void
-  onToggleDisponivel: (product: Product) => void
 }
 
-export function ProductCard({ product, onEdit, onDelete, onToggleDisponivel }: ProductCardProps) {
+export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
   const isCozinha = product.local_preparo === "cozinha"
+  const [isPending, startTransition] = useTransition()
+
+  async function handleToggleDisponivel() {
+    startTransition(async () => {
+      await toggleDisponibilidadeWebHook(product.id, !product.disponivel)
+    })
+  }
 
   return (
     <Card className="p-4 flex flex-col gap-3 border border-border bg-card/60 hover:bg-card/80 transition rounded-lg">
@@ -29,7 +37,7 @@ export function ProductCard({ product, onEdit, onDelete, onToggleDisponivel }: P
       {/* Tipo */}
       <p className="text-sm text-muted-foreground">{product.tipo}</p>
 
-      {/* ✅ Badge de Local de Preparo */}
+      {/* ✅ Badge Local de Preparo */}
       <div
         className={`text-xs font-semibold w-fit px-2 py-1 rounded-md flex items-center gap-1 border
           ${isCozinha 
@@ -58,11 +66,12 @@ export function ProductCard({ product, onEdit, onDelete, onToggleDisponivel }: P
       {/* Ações */}
       <div className="flex items-center justify-between mt-3">
 
-        {/* Disponível / Em Falta */}
+        {/* ✅ BOTÃO DISPONIBILIDADE SINCRONIZADO COM WEBHOOK */}
         <Button
           size="sm"
           variant={product.disponivel ? "default" : "destructive"}
-          onClick={() => onToggleDisponivel(product)}
+          onClick={handleToggleDisponivel}
+          disabled={isPending}
           className="text-xs"
         >
           {product.disponivel ? "Disponível" : "Em Falta"}

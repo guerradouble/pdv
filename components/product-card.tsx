@@ -4,22 +4,26 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Pencil, Trash2, UtensilsCrossed, Store } from "lucide-react"
 import type { Product } from "@/types/product"
-import { toggleDisponibilidadeWebHook } from "@/app/actions/n8n-actions"
 import { useTransition } from "react"
+import { toggleDisponibilidadeWebHook } from "@/app/actions/n8n-actions"
 
 interface ProductCardProps {
   product: Product
   onEdit: (product: Product) => void
   onDelete: (id: string) => void
+  onRefresh: () => void // ✅ Para atualizar a tabela depois do toggle
 }
 
-export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
+export function ProductCard({ product, onEdit, onDelete, onRefresh }: ProductCardProps) {
   const isCozinha = product.local_preparo === "cozinha"
   const [isPending, startTransition] = useTransition()
 
-  async function handleToggleDisponivel() {
+  async function handleToggle() {
     startTransition(async () => {
       await toggleDisponibilidadeWebHook(product.id, !product.disponivel)
+
+      // ✅ Atualiza a listagem instantaneamente
+      onRefresh()
     })
   }
 
@@ -37,7 +41,7 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
       {/* Tipo */}
       <p className="text-sm text-muted-foreground">{product.tipo}</p>
 
-      {/* ✅ Badge Local de Preparo */}
+      {/* ✅ Badge local de preparo */}
       <div
         className={`text-xs font-semibold w-fit px-2 py-1 rounded-md flex items-center gap-1 border
           ${isCozinha 
@@ -66,12 +70,12 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
       {/* Ações */}
       <div className="flex items-center justify-between mt-3">
 
-        {/* ✅ BOTÃO DISPONIBILIDADE SINCRONIZADO COM WEBHOOK */}
+        {/* ✅ Toggle Disponibilidade */}
         <Button
           size="sm"
-          variant={product.disponivel ? "default" : "destructive"}
-          onClick={handleToggleDisponivel}
           disabled={isPending}
+          variant={product.disponivel ? "default" : "destructive"}
+          onClick={handleToggle}
           className="text-xs"
         >
           {product.disponivel ? "Disponível" : "Em Falta"}

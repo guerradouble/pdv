@@ -48,7 +48,7 @@ export async function deletarProdutoWebHook(id: string) {
   });
 }
 
-/* ✅ Atualizar Status na Cozinha */
+/* ✅ Atualizar Status da Cozinha */
 export async function atualizarStatusCozinha(payload: any) {
   const url = process.env.N8N_WEBHOOK_ATUALIZA_STATUS;
   if (!url) return console.error("❌ N8N_WEBHOOK_ATUALIZA_STATUS não configurado");
@@ -60,7 +60,7 @@ export async function atualizarStatusCozinha(payload: any) {
   });
 }
 
-/* ✅ Alternar Disponibilidade (Disponível / Indisponível) */
+/* ✅ Alternar Disponibilidade */
 export async function toggleDisponibilidadeWebHook(id: string, disponivel: boolean) {
   const url = process.env.N8N_WEBHOOK_TOGGLE_DISPONIVEL;
   if (!url) return console.error("❌ N8N_WEBHOOK_TOGGLE_DISPONIVEL não configurada");
@@ -76,10 +76,10 @@ export async function toggleDisponibilidadeWebHook(id: string, disponivel: boole
   });
 }
 
-/* ✅ Enviar também para o webhook de edição, para manter sincronizado (RAG e PDV/Delivery) */
+/* ✅ Sincronizar disponibilidade com webhook de editar (RAG + PDV Delivery) */
 export async function syncDisponibilidadeComWebhookEditar(id: string, disponivel: boolean) {
   const url = process.env.N8N_WEBHOOK_EDITAR;
-  if (!url) return; // aqui não precisa erro, é opcional
+  if (!url) return; // opcional
 
   await fetch(url, {
     method: "POST",
@@ -90,4 +90,35 @@ export async function syncDisponibilidadeComWebhookEditar(id: string, disponivel
       origem: "toggle_disponibilidade_sync"
     }),
   });
+}
+
+/* ✅ Criar Pedido do Balcão via n8n */
+export async function criarPedidoBalcaoWebHook(payload: {
+  nome_cliente: string;
+  telefone?: string | null;
+  mesa?: string | null;
+  canal: "balcao";
+  items: Array<{
+    produto_id: string;
+    produto_nome: string;
+    produto_preco: number; // decimal (numeric(10,2))
+    quantidade: number;
+  }>;
+}) {
+  const url = process.env.N8N_WEBHOOK_BALCAO_CRIAR_PEDIDO;
+  if (!url) return console.error("❌ N8N_WEBHOOK_BALCAO_CRIAR_PEDIDO não configurado");
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`❌ Erro no webhook do balcão (${res.status}): ${txt}`);
+  }
+
+  return res.json().catch(() => ({}));
 }

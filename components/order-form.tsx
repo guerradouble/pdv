@@ -21,17 +21,26 @@ export function OrderForm({ products, onSubmit }: OrderFormProps) {
     telefone: "",
     mesa: "",
   })
-  const [items, setItems] = useState<(OrderFormItem & { tempId: string; searchTerm: string })[]>([
-    { tempId: "1", produto_id: "", produto_nome: "", produto_preco: 0, quantidade: 1, searchTerm: "" },
+
+  // ✅ carrega local_preparo junto
+  const [items, setItems] = useState<(OrderFormItem & {
+    tempId: string
+    searchTerm: string
+    local_preparo?: "balcao" | "cozinha"
+  })[]>([
+    { tempId: "1", produto_id: "", produto_nome: "", produto_preco: 0, quantidade: 1, searchTerm: "", local_preparo: "balcao" },
   ])
+
   const [showProductList, setShowProductList] = useState<{ [key: string]: boolean }>({})
   const [selectedProducts, setSelectedProducts] = useState<{ [key: string]: Product | null }>({})
 
+  // ✅ garante array sempre
   const filteredProducts = (searchTerm: string) => {
-    if (!searchTerm) return products
+    const list = Array.isArray(products) ? products : []
+    if (!searchTerm) return list
 
     const term = searchTerm.toLowerCase()
-    return products.filter(
+    return list.filter(
       (product) =>
         product.nome.toLowerCase().includes(term) ||
         product.tipo.toLowerCase().includes(term) ||
@@ -50,7 +59,8 @@ export function OrderForm({ products, onSubmit }: OrderFormProps) {
               ...item,
               produto_id: product.id,
               produto_nome: product.nome,
-              produto_preco: product.preco as unknown as number,
+              produto_preco: Number(product.preco), // ✅ numérico
+              local_preparo: (product as any).local_preparo || "balcao", // ✅ leva pro pedido
               searchTerm: product.nome,
             }
           : item,
@@ -63,7 +73,7 @@ export function OrderForm({ products, onSubmit }: OrderFormProps) {
     const newTempId = String(Math.max(...items.map((i) => Number(i.tempId)), 0) + 1)
     setItems([
       ...items,
-      { tempId: newTempId, produto_id: "", produto_nome: "", produto_preco: 0, quantidade: 1, searchTerm: "" },
+      { tempId: newTempId, produto_id: "", produto_nome: "", produto_preco: 0, quantidade: 1, searchTerm: "", local_preparo: "balcao" },
     ])
   }
 
@@ -96,24 +106,27 @@ export function OrderForm({ products, onSubmit }: OrderFormProps) {
       return
     }
 
+    // ✅ preserva local_preparo no payload (cast pra não travar TS se o tipo original não tiver essa chave)
     const orderData: OrderFormData = {
       nome_cliente: clientData.nome_cliente,
       telefone: clientData.telefone || undefined,
       mesa: clientData.mesa || undefined,
-      items: items.map(({ tempId, searchTerm, ...item }) => item),
+      items: items.map(({ tempId, searchTerm, local_preparo, ...rest }) =>
+        ({ ...rest, ...(local_preparo ? { local_preparo } : {}) })
+      ) as any,
       tipo: "balcao",
     }
 
     onSubmit(orderData)
 
     setClientData({ nome_cliente: "", telefone: "", mesa: "" })
-    setItems([{ tempId: "1", produto_id: "", produto_nome: "", produto_preco: 0, quantidade: 1, searchTerm: "" }])
+    setItems([{ tempId: "1", produto_id: "", produto_nome: "", produto_preco: 0, quantidade: 1, searchTerm: "", local_preparo: "balcao" }])
     setShowProductList({})
     setSelectedProducts({})
   }
 
   const calculateTotal = () => {
-    return items.reduce((sum, item) => sum + item.produto_preco * item.quantidade, 0)
+    return items.reduce((sum, item) => sum + Number(item.produto_preco) * Number(item.quantidade), 0)
   }
 
   return (
@@ -250,7 +263,7 @@ export function OrderForm({ products, onSubmit }: OrderFormProps) {
                   <div className="text-sm text-muted-foreground flex items-center justify-between pt-2 border-t">
                     <span>Subtotal:</span>
                     <span className="font-semibold text-foreground">
-                      R$ {(item.produto_preco * item.quantidade).toFixed(2)}
+                      R$ {(Number(item.produto_preco) * Number(item.quantidade)).toFixed(2)}
                     </span>
                   </div>
                 )}

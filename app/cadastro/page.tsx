@@ -41,6 +41,12 @@ export default function CadastroPage() {
 
   return (
     <div className="p-6 space-y-6">
+
+      {/* ✅ Botão de Voltar Adicionado */}
+      <Button variant="outline" size="sm" onClick={() => window.history.back()}>
+        ← Voltar
+      </Button>
+
       <div className="flex justify-between items-center">
         <h1 className="text-xl font-bold">Cadastro / Produtos</h1>
 
@@ -57,7 +63,7 @@ export default function CadastroPage() {
             product={product}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onRefresh={loadProducts} // ✅ Atualiza quando toggla disponibilidade
+            onRefresh={loadProducts}
           />
         ))}
       </div>
@@ -69,7 +75,7 @@ export default function CadastroPage() {
           onClose={() => {
             setIsFormOpen(false)
             setEditingProduct(null)
-            loadProducts() // ✅ Atualiza ao salvar
+            loadProducts()
           }}
         />
       )}

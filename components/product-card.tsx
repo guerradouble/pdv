@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Pencil, Trash2, UtensilsCrossed, Store } from "lucide-react"
 import type { Product } from "@/types/product"
 import { useTransition } from "react"
-import { toggleDisponibilidadeWebHook } from "@/app/actions/n8n-actions"
+import { toggleDisponibilidadeWebHook, syncDisponibilidadeComWebhookEditar } from "@/app/actions/n8n-actions"
 
 interface ProductCardProps {
   product: Product
   onEdit: (product: Product) => void
   onDelete: (id: string) => void
-  onRefresh: () => void // ✅ Para atualizar a tabela depois do toggle
+  onRefresh: () => void // ✅ Atualiza lista
 }
 
 export function ProductCard({ product, onEdit, onDelete, onRefresh }: ProductCardProps) {
@@ -20,9 +20,15 @@ export function ProductCard({ product, onEdit, onDelete, onRefresh }: ProductCar
 
   async function handleToggle() {
     startTransition(async () => {
-      await toggleDisponibilidadeWebHook(product.id, !product.disponivel)
+      const novoStatus = !product.disponivel
 
-      // ✅ Atualiza a listagem instantaneamente
+      // ✅ Envia para webhook toggle
+      await toggleDisponibilidadeWebHook(product.id, novoStatus)
+
+      // ✅ Também informa o webhook de edição (para atualizar RAG / cache / PDV / painéis)
+      await syncDisponibilidadeComWebhookEditar(product.id, novoStatus)
+
+      // ✅ Atualiza UI
       onRefresh()
     })
   }
@@ -30,7 +36,6 @@ export function ProductCard({ product, onEdit, onDelete, onRefresh }: ProductCar
   return (
     <Card className="p-4 flex flex-col gap-3 border border-border bg-card/60 hover:bg-card/80 transition rounded-lg">
       
-      {/* Nome + Preço */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-foreground">{product.nome}</h3>
         <span className="text-sm font-medium text-primary">
@@ -38,10 +43,8 @@ export function ProductCard({ product, onEdit, onDelete, onRefresh }: ProductCar
         </span>
       </div>
 
-      {/* Tipo */}
       <p className="text-sm text-muted-foreground">{product.tipo}</p>
 
-      {/* ✅ Badge local de preparo */}
       <div
         className={`text-xs font-semibold w-fit px-2 py-1 rounded-md flex items-center gap-1 border
           ${isCozinha 
@@ -60,17 +63,14 @@ export function ProductCard({ product, onEdit, onDelete, onRefresh }: ProductCar
         )}
       </div>
 
-      {/* Ingredientes */}
       {product.ingredientes && (
         <p className="text-xs text-muted-foreground leading-relaxed">
           {product.ingredientes}
         </p>
       )}
 
-      {/* Ações */}
       <div className="flex items-center justify-between mt-3">
 
-        {/* ✅ Toggle Disponibilidade */}
         <Button
           size="sm"
           disabled={isPending}
@@ -81,7 +81,6 @@ export function ProductCard({ product, onEdit, onDelete, onRefresh }: ProductCar
           {product.disponivel ? "Disponível" : "Em Falta"}
         </Button>
 
-        {/* Editar / Excluir */}
         <div className="flex gap-2">
           <Button size="icon" variant="outline" onClick={() => onEdit(product)}>
             <Pencil className="h-4 w-4" />

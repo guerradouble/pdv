@@ -11,7 +11,7 @@ import { OrderList } from "@/components/order-list"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { Product } from "@/types/product"
 import type { Order, OrderFormData } from "@/types/order"
-import { enviarItemParaCozinha } from "@/app/actions/n8n-actions"
+import { criarPedidoBalcaoWebHook } from "@/app/actions/n8n-actions" // ✅ NOVO
 
 export default function BalcaoPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -74,48 +74,32 @@ export default function BalcaoPage() {
     }
   }
 
+  // ✅ Agora o PDV NÃO insere direto no banco — envia para o n8n
   const handleAddOrder = async (orderData: OrderFormData) => {
     try {
-      const { data: pedido } = await supabase
-        .from("pedidos_balcao")
-        .insert([{ nome_cliente: orderData.nome_cliente || "Balcão", mesa: orderData.mesa || null }])
-        .select()
-        .single()
-
-      const itensInsert = orderData.itens.map((item) => ({
-        pedido_id: pedido.id,
-        produto_id: item.produto_id,
-        produto_nome: item.produto_nome,
-        produto_preco: item.produto_preco,
-        quantidade: item.quantidade,
-        subtotal: item.produto_preco * item.quantidade,
-        cliente_nome: orderData.nome_cliente || null,
+      // orderData.items já vem do OrderForm (foi padronizado)
+      const payload = {
+        nome_cliente: orderData.nome_cliente?.trim() || "Balcão",
+        telefone: orderData.telefone || null,
         mesa: orderData.mesa || null,
-      }))
-      await supabase.from("pedidos_balcao_itens").insert(itensInsert)
-
-      for (const it of orderData.itens) {
-        await enviarItemParaCozinha({
-          pedido_id: pedido.id,
+        canal: "balcao",
+        // normaliza itens e força numérico em preco/quantidade
+        items: (orderData.items || []).map((it) => ({
           produto_id: it.produto_id,
           produto_nome: it.produto_nome,
-          quantidade: it.quantidade,
-          mesa: orderData.mesa || null,
-          cliente_nome: orderData.nome_cliente || null,
-          canal: "balcao",
-        })
+          produto_preco: Number(it.produto_preco), // banco espera decimal (numeric(10,2))
+          quantidade: Number(it.quantidade),
+        })),
       }
 
-      loadOrders()
+      await criarPedidoBalcaoWebHook(payload) // 🔥 dispara para o n8n
+
+      // Recarrega a lista (o realtime também deve refletir)
+      await loadOrders()
     } catch (err) {
       console.error(err)
-      alert("Erro ao registrar pedido.")
+      alert("Erro ao registrar pedido via n8n.")
     }
-  }
-
-  const marcarComoPronto = async (id: string) => {
-    await supabase.from("pedidos_balcao").update({ status: "pronto" }).eq("id", id)
-    loadOrders()
   }
 
   return (
@@ -134,7 +118,10 @@ export default function BalcaoPage() {
         {isLoading ? (
           <p className="text-center text-muted-foreground">Carregando pedidos...</p>
         ) : (
-          <OrderList orders={orders} onMarkAsReady={marcarComoPronto} />
+          <OrderList orders={orders} onMarkAsReady={async (id) => {
+            await supabase.from("pedidos_balcao").update({ status: "pronto" }).eq("id", id)
+            loadOrders()
+          }} />
         )}
       </main>
     </div>

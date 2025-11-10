@@ -73,7 +73,7 @@ export default function BalcaoPage() {
     }
   }
 
-  // ✅ Agora o PDV chama um API Route (server-side) em vez de importar Server Action no client
+  // ✅ Envia local_preparo dentro de cada item
   const handleAddOrder = async (orderData: OrderFormData) => {
     try {
       const res = await fetch("/api/n8n/balcao-criar-pedido", {
@@ -84,11 +84,12 @@ export default function BalcaoPage() {
           telefone: orderData.telefone || null,
           mesa: orderData.mesa || null,
           canal: "balcao",
-          items: (orderData.items || []).map((it) => ({
+          items: (orderData.items || []).map((it: any) => ({
             produto_id: it.produto_id,
             produto_nome: it.produto_nome,
             produto_preco: Number(it.produto_preco),
             quantidade: Number(it.quantidade),
+            local_preparo: it.local_preparo || "balcao", // ✅ chave para o n8n decidir se manda pra cozinha
           })),
         }),
       })

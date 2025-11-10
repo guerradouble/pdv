@@ -35,7 +35,7 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
       setFormData({
         nome: product.nome,
         tipo: product.tipo,
-        preco: (product.preco / 100).toString(),
+        preco: product.preco.toString().replace(".", ","), // ✅ agora recebemos decimal puro
         ingredientes: product.ingredientes || "",
         local_preparo: product.local_preparo || "balcao",
       })
@@ -49,17 +49,15 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
 
     if (!formData.nome.trim()) return alert("Preencha o nome do produto")
     if (!formData.tipo) return alert("Selecione um tipo")
-    if (!formData.preco || Number(formData.preco) <= 0) return alert("Preço inválido")
+    if (!formData.preco || Number(formData.preco.replace(",", ".")) <= 0) return alert("Preço inválido")
 
     const payload = {
       ...(product && { id: product.id }),
       nome: formData.nome.trim(),
       tipo: formData.tipo,
-      preco: Math.round(Number(formData.preco) * 100),
+      preco: Number(formData.preco.replace(",", ".")), // ✅ SALVA DIRETO COMO DECIMAL
       ingredientes: formData.ingredientes.trim() || null,
       local_preparo: formData.local_preparo,
-
-      // ✅ Aqui está a adição solicitada:
       disponivel: product?.disponivel ?? true,
     }
 
@@ -70,7 +68,7 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
     }
 
     onClose()
-    onRefresh?.() // ✅ Atualiza lista ao salvar
+    onRefresh?.()
   }
 
   return (
@@ -112,7 +110,11 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
 
             <div className="space-y-2">
               <Label>Preço (R$) *</Label>
-              <Input type="number" step="0.01" value={formData.preco} onChange={(e) => setFormData({ ...formData, preco: e.target.value })} />
+              <Input
+                type="text"
+                value={formData.preco}
+                onChange={(e) => setFormData({ ...formData, preco: e.target.value })}
+              />
             </div>
 
             <div className="space-y-2">

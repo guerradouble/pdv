@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Pencil, Trash2, UtensilsCrossed, Store } from "lucide-react"
 import type { Product } from "@/types/product"
 import { useTransition } from "react"
-import { toggleDisponibilidadeWebHook, syncDisponibilidadeComWebhookEditar } from "@/app/actions/n8n-actions"
+import { toggleDisponibilidadeWebHook } from "@/app/actions/n8n-actions"
 
 interface ProductCardProps {
   product: Product
   onEdit: (product: Product) => void
   onDelete: (id: string) => void
-  onRefresh: () => void // ✅ Atualiza lista
+  onRefresh: () => void // ✅ para recarregar lista após toggle
 }
 
 export function ProductCard({ product, onEdit, onDelete, onRefresh }: ProductCardProps) {
@@ -20,22 +20,14 @@ export function ProductCard({ product, onEdit, onDelete, onRefresh }: ProductCar
 
   async function handleToggle() {
     startTransition(async () => {
-      const novoStatus = !product.disponivel
-
-      // ✅ Envia para webhook toggle
-      await toggleDisponibilidadeWebHook(product.id, novoStatus)
-
-      // ✅ Também informa o webhook de edição (para atualizar RAG / cache / PDV / painéis)
-      await syncDisponibilidadeComWebhookEditar(product.id, novoStatus)
-
-      // ✅ Atualiza UI
-      onRefresh()
+      await toggleDisponibilidadeWebHook(product.id, !product.disponivel)
+      onRefresh() // ✅ força rerender
     })
   }
 
   return (
     <Card className="p-4 flex flex-col gap-3 border border-border bg-card/60 hover:bg-card/80 transition rounded-lg">
-      
+
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-foreground">{product.nome}</h3>
         <span className="text-sm font-medium text-primary">
@@ -45,12 +37,11 @@ export function ProductCard({ product, onEdit, onDelete, onRefresh }: ProductCar
 
       <p className="text-sm text-muted-foreground">{product.tipo}</p>
 
-      <div
-        className={`text-xs font-semibold w-fit px-2 py-1 rounded-md flex items-center gap-1 border
-          ${isCozinha 
-            ? "bg-orange-500/15 text-orange-300 border-orange-500/40" 
-            : "bg-blue-500/15 text-blue-300 border-blue-500/40"
-          }`}
+      <div className={`text-xs font-semibold w-fit px-2 py-1 rounded-md flex items-center gap-1 border
+        ${isCozinha 
+          ? "bg-orange-500/15 text-orange-300 border-orange-500/40" 
+          : "bg-blue-500/15 text-blue-300 border-blue-500/40"
+        }`}
       >
         {isCozinha ? (
           <>

@@ -4,8 +4,8 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Plus } from "lucide-react"
-import { ProductForm } from "./_components/product-form"
-import { ProductCard } from "./_components/product-card"
+import { ProductForm } from "@/components/product-form"
+import { ProductCard } from "@/components/product-card"
 import type { Product } from "@/types/product"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
@@ -16,7 +16,6 @@ export default function CadastroPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
 
-  // ✅ Atualiza a lista
   async function loadProducts() {
     const { data } = await supabase
       .from("cadastro_cardapio")
@@ -35,8 +34,8 @@ export default function CadastroPage() {
     setIsFormOpen(true)
   }
 
-  function handleDelete(id: string) {
-    supabase.from("cadastro_cardapio").delete().match({ id })
+  async function handleDelete(id: string) {
+    await supabase.from("cadastro_cardapio").delete().match({ id })
     loadProducts()
   }
 
@@ -50,7 +49,7 @@ export default function CadastroPage() {
         </Button>
       </div>
 
-      {/* ✅ LISTA DE PRODUTOS */}
+      {/* LISTA DE PRODUTOS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {products.map((product) => (
           <ProductCard
@@ -58,12 +57,12 @@ export default function CadastroPage() {
             product={product}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onRefresh={loadProducts} // ✅ AQUI ESTÁ O QUE VOCÊ PEDIU
+            onRefresh={loadProducts} // ✅ Atualiza quando toggla disponibilidade
           />
         ))}
       </div>
 
-      {/* ✅ MODAL */}
+      {/* MODAL */}
       {isFormOpen && (
         <ProductForm
           product={editingProduct}

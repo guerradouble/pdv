@@ -58,6 +58,9 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
       preco: Math.round(Number(formData.preco) * 100),
       ingredientes: formData.ingredientes.trim() || null,
       local_preparo: formData.local_preparo,
+
+      // ✅ Aqui está a adição solicitada:
+      disponivel: product?.disponivel ?? true,
     }
 
     if (product) {

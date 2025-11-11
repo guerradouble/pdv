@@ -3,10 +3,10 @@ import { NextResponse } from "next/server"
 
 export async function POST(req: Request) {
   try {
-    const url = process.env.N8N_WEBHOOK_BALCAO_CRIAR
+    const url = process.env.N8N_WEBHOOK_BALCAO_CRIAR_PEDIDO
     if (!url) {
       return NextResponse.json(
-        { error: "N8N_WEBHOOK_BALCAO_CRIAR não configurado" },
+        { error: "N8N_WEBHOOK_BALCAO_CRIAR_PEDIDO não configurado" },
         { status: 500 },
       )
     }

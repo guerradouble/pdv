@@ -1,4 +1,3 @@
-// app/balcao/page.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -25,11 +24,19 @@ export default function BalcaoPage() {
     loadProducts()
     loadOrders()
 
+    // Realtime de pedidos
     const ordersChannel = supabase
       .channel("pedidos_balcao_realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "pedidos_balcao" }, () => loadOrders())
       .subscribe()
 
+    // Realtime de itens (garante atualização imediata quando o n8n insere)
+    const itensChannel = supabase
+      .channel("pedidos_balcao_itens_realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos_balcao_itens" }, () => loadOrders())
+      .subscribe()
+
+    // Realtime de status da cozinha
     const cozinhaChannel = supabase
       .channel("cozinha_to_balcao_status")
       .on("postgres_changes", { event: "*", schema: "public", table: "cozinha_itens" }, (payload) => {
@@ -52,6 +59,7 @@ export default function BalcaoPage() {
       })
       .subscribe()
 
+    // Realtime de produtos (cardápio)
     const productsChannel = supabase
       .channel("cadastro_cardapio_realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "cadastro_cardapio" }, () => loadProducts())
@@ -59,6 +67,7 @@ export default function BalcaoPage() {
 
     return () => {
       supabase.removeChannel(ordersChannel)
+      supabase.removeChannel(itensChannel)
       supabase.removeChannel(cozinhaChannel)
       supabase.removeChannel(productsChannel)
     }
@@ -71,6 +80,7 @@ export default function BalcaoPage() {
         .select("*")
         .eq("disponivel", true)
         .order("nome", { ascending: true })
+
       if (fetchError) throw fetchError
       setProducts((data || []) as Product[])
     } catch (err) {
@@ -83,10 +93,24 @@ export default function BalcaoPage() {
     setIsLoading(true)
     setError(null)
     try {
+      // 👉 Busca pedidos + itens associados
       const { data, error } = await supabase
         .from("pedidos_balcao")
-        .select("*")
+        .select(`
+          *,
+          items:pedidos_balcao_itens (
+            id,
+            pedido_id,
+            produto_id,
+            produto_nome,
+            produto_preco,
+            quantidade,
+            subtotal,
+            created_at
+          )
+        `)
         .order("created_at", { ascending: false })
+
       if (error) throw error
       setOrders((data || []) as Order[])
     } catch (err) {
@@ -123,9 +147,16 @@ export default function BalcaoPage() {
       }
 
       await loadOrders()
+      toast({
+        title: "✅ Pedido criado!",
+        description: "O pedido foi registrado e enviado para os setores correspondentes.",
+      })
     } catch (err) {
       console.error(err)
-      alert("Erro ao registrar pedido.")
+      toast({
+        title: "❌ Erro ao registrar pedido",
+        description: "Tente novamente em alguns segundos.",
+      })
     }
   }
 

@@ -11,6 +11,7 @@ import { OrderList } from "@/components/order-list"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { Product } from "@/types/product"
 import type { Order, OrderFormData } from "@/types/order"
+import { toast } from "@/components/ui/use-toast" // ✅ IMPORT NECESSÁRIO
 
 export default function BalcaoPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -24,19 +25,49 @@ export default function BalcaoPage() {
     loadProducts()
     loadOrders()
 
+    // ✅ Atualização de pedidos
     const ordersChannel = supabase
       .channel("pedidos_balcao_realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "pedidos_balcao" }, () => loadOrders())
       .subscribe()
 
+    // ✅ Atualização de produtos do cardápio
     const productsChannel = supabase
       .channel("cadastro_cardapio_realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "cadastro_cardapio" }, () => loadProducts())
       .subscribe()
 
+    // ✅ ESCUTA DA COZINHA → BALCÃO (PRONTO E EM PREPARO)
+    const cozinhaChannel = supabase
+      .channel("cozinha_to_balcao_status")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "cozinha_itens" },
+        (payload) => {
+          const item = payload.new
+          if (!item) return
+
+          if (item.status === "em_preparo") {
+            toast({
+              title: "🟡 Em Preparo",
+              description: `${item.produto_nome} (Mesa ${item.mesa ?? "Balcão"}) está sendo preparado.`,
+            })
+          }
+
+          if (item.status === "pronto") {
+            toast({
+              title: "🟢 Pronto!",
+              description: `${item.produto_nome} (Mesa ${item.mesa ?? "Balcão"}) está pronto para servir.`,
+            })
+          }
+        }
+      )
+      .subscribe()
+
     return () => {
       supabase.removeChannel(ordersChannel)
       supabase.removeChannel(productsChannel)
+      supabase.removeChannel(cozinhaChannel)
     }
   }, [])
 
@@ -73,7 +104,7 @@ export default function BalcaoPage() {
     }
   }
 
-  // ✅ Envia local_preparo dentro de cada item
+  // ✅ Envia local_preparo dentro de cada item para o n8n decidir se vai pra cozinha
   const handleAddOrder = async (orderData: OrderFormData) => {
     try {
       const res = await fetch("/api/n8n/balcao-criar-pedido", {
@@ -89,48 +120,11 @@ export default function BalcaoPage() {
             produto_nome: it.produto_nome,
             produto_preco: Number(it.produto_preco),
             quantidade: Number(it.quantidade),
-            local_preparo: it.local_preparo || "balcao", // ✅ chave para o n8n decidir se manda pra cozinha
+            local_preparo: it.local_preparo || "balcao",
           })),
         }),
       })
 
       if (!res.ok) {
         const txt = await res.text().catch(() => "")
-        throw new Error(`Falha ao criar pedido (${res.status}): ${txt}`)
-      }
-
-      await loadOrders()
-    } catch (err) {
-      console.error(err)
-      alert("Erro ao registrar pedido.")
-    }
-  }
-
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-6 flex items-center justify-between">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> Voltar
-          </Link>
-          <h1 className="text-xl font-semibold">Balcão</h1>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8 space-y-8">
-        <OrderForm products={products} onSubmit={handleAddOrder} />
-        {isLoading ? (
-          <p className="text-center text-muted-foreground">Carregando pedidos...</p>
-        ) : (
-          <OrderList
-            orders={orders}
-            onMarkAsReady={async (id) => {
-              await supabase.from("pedidos_balcao").update({ status: "pronto" }).eq("id", id)
-              loadOrders()
-            }}
-          />
-        )}
-      </main>
-    </div>
-  )
-}
+        throw new Error(`Falha ao criar pedido (${res.status}): ${txt

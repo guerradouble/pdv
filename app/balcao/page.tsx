@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { ArrowLeft, Plus, X } from "lucide-react"
+import { ArrowLeft, Plus, Minus, X } from "lucide-react"
 import Link from "next/link"
 import { OrderForm } from "@/components/order-form"
 import { OrderList } from "@/components/order-list"
@@ -20,7 +20,7 @@ export default function BalcaoPage() {
 
   const [openAddModal, setOpenAddModal] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
-  const [addItems, setAddItems] = useState<OrderFormItem[]>([])
+  const [pendingItems, setPendingItems] = useState<OrderFormItem[]>([]) // itens selecionados no modal
 
   const supabase = getSupabaseBrowserClient()
 
@@ -43,19 +43,11 @@ export default function BalcaoPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "cozinha_itens" }, (payload) => {
         const item = payload.new
         if (!item) return
-
         if (item.status === "em_preparo") {
-          toast({
-            title: "🟡 Em Preparo",
-            description: `${item.produto_nome} (Mesa ${item.mesa ?? "Balcão"}) está sendo preparado.`,
-          })
+          toast({ title: "🟡 Em Preparo", description: `${item.produto_nome} (Mesa ${item.mesa ?? "Balcão"}) está sendo preparado.` })
         }
-
         if (item.status === "pronto") {
-          toast({
-            title: "🟢 Pronto!",
-            description: `${item.produto_nome} (Mesa ${item.mesa ?? "Balcão"}) está pronto para servir.`,
-          })
+          toast({ title: "🟢 Pronto!", description: `${item.produto_nome} (Mesa ${item.mesa ?? "Balcão"}) está pronto para servir.` })
         }
       })
       .subscribe()
@@ -79,6 +71,7 @@ export default function BalcaoPage() {
         .from("cadastro_cardapio")
         .select("*")
         .eq("disponivel", true)
+        .order("grupo", { ascending: true })
         .order("nome", { ascending: true })
 
       if (fetchError) throw fetchError
@@ -121,6 +114,7 @@ export default function BalcaoPage() {
     }
   }
 
+  // Cria comanda nova (usa seu fluxo n8n atual)
   const handleAddOrder = async (orderData: OrderFormData) => {
     try {
       const res = await fetch("/api/n8n/balcao-criar-pedido", {
@@ -147,21 +141,19 @@ export default function BalcaoPage() {
       }
 
       await loadOrders()
-      toast({
-        title: "✅ Pedido criado!",
-        description: "O pedido foi registrado e enviado para os setores correspondentes.",
-      })
+      toast({ title: "✅ Pedido criado!", description: "O pedido foi registrado e enviado para os setores correspondentes." })
     } catch (err) {
       console.error(err)
-      toast({
-        title: "❌ Erro ao registrar pedido",
-        description: "Tente novamente em alguns segundos.",
-      })
+      toast({ title: "❌ Erro ao registrar pedido", description: "Tente novamente em alguns segundos." })
     }
   }
 
-  // ---------- 🔹 Adicionar itens a um pedido existente ----------
+  // Adiciona itens em comanda existente
   const handleAddItems = async (pedidoId: string, items: OrderFormItem[]) => {
+    if (!items.length) {
+      toast({ title: "Nada a adicionar", description: "Selecione pelo menos um item." })
+      return
+    }
     try {
       const res = await fetch("/api/n8n/balcao-adicionar-itens", {
         method: "POST",
@@ -174,50 +166,36 @@ export default function BalcaoPage() {
         throw new Error(`Falha ao adicionar itens (${res.status}): ${txt}`)
       }
 
-      toast({
-        title: "Itens adicionados!",
-        description: "Os novos produtos foram enviados aos setores correspondentes.",
-      })
+      toast({ title: "Itens adicionados!", description: "Os novos produtos foram enviados aos setores correspondentes." })
       setOpenAddModal(false)
       setSelectedOrder(null)
-      setAddItems([])
+      setPendingItems([])
       await loadOrders()
     } catch (err) {
       console.error(err)
-      toast({
-        title: "Erro ao adicionar itens",
-        description: "Tente novamente em alguns segundos.",
-        variant: "destructive",
-      })
+      toast({ title: "Erro ao adicionar itens", description: "Tente novamente em alguns segundos.", variant: "destructive" })
     }
   }
 
-  // ---------- 🔹 Finalizar comanda ----------
+  // Finaliza comanda
   const handleFinalizeOrder = async (pedidoId: string) => {
     const confirmClose = window.confirm("Deseja realmente finalizar esta comanda?")
     if (!confirmClose) return
-
     try {
       const res = await fetch("/api/n8n/balcao-finalizar-comanda", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pedido_id: pedidoId }),
       })
-
       if (!res.ok) {
         const txt = await res.text().catch(() => "")
         throw new Error(`Falha ao finalizar (${res.status}): ${txt}`)
       }
-
       toast({ title: "✅ Comanda finalizada!" })
       await loadOrders()
     } catch (err) {
       console.error(err)
-      toast({
-        title: "Erro ao finalizar comanda",
-        description: "Tente novamente em alguns segundos.",
-        variant: "destructive",
-      })
+      toast({ title: "Erro ao finalizar comanda", description: "Tente novamente em alguns segundos.", variant: "destructive" })
     }
   }
 
@@ -237,56 +215,46 @@ export default function BalcaoPage() {
 
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Criar nova comanda */}
-        <OrderForm products={products} onSubmit={handleAddOrder} />
+        <Card className="p-6">
+          <OrderForm products={products} onSubmit={handleAddOrder} />
+        </Card>
 
         {/* Pedidos ativos */}
         <OrderList
           orders={orders}
           onAddItems={(order) => {
             setSelectedOrder(order)
+            setPendingItems([])
             setOpenAddModal(true)
           }}
           onFinalize={handleFinalizeOrder}
         />
       </main>
 
-      {/* Modal adicionar itens */}
+      {/* Modal adicionar itens via cardápio agrupado */}
       {openAddModal && selectedOrder && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-2xl p-6 relative">
+          <Card className="w-full max-w-5xl p-6 relative">
             <button className="absolute right-4 top-4" onClick={() => setOpenAddModal(false)}>
               <X className="h-5 w-5" />
             </button>
+
             <h3 className="text-xl font-semibold mb-2">
               Adicionar Itens — {selectedOrder.nome_cliente} {selectedOrder.mesa ? `(Mesa ${selectedOrder.mesa})` : ""}
             </h3>
-            <p className="text-sm text-muted-foreground mb-4">Escolha os itens do cardápio e confirme para inserir na mesma comanda.</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Toque em “Adicionar” para incluir rapidamente. O destino (cozinha/balcão) é automático conforme o cardápio.
+            </p>
 
-            <InlineAddItem
+            <CatalogAddItems
               products={products}
-              onAdd={(it) => setAddItems((prev) => [...prev, it])}
+              pendingItems={pendingItems}
+              setPendingItems={setPendingItems}
             />
 
-            {addItems.length > 0 && (
-              <div className="mt-4 border rounded p-3">
-                <div className="text-sm font-medium mb-2">Itens a adicionar</div>
-                <ul className="text-sm list-disc ml-4 space-y-1">
-                  {addItems.map((i, idx) => (
-                    <li key={idx}>
-                      {i.quantidade}× {i.produto_nome} — R$ {(Number(i.produto_preco) * Number(i.quantidade)).toFixed(2)} [{i.local_preparo}]
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
             <div className="mt-6 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setOpenAddModal(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={() => handleAddItems(selectedOrder.id, addItems)}>
-                Confirmar inclusão
-              </Button>
+              <Button variant="outline" onClick={() => setOpenAddModal(false)}>Cancelar</Button>
+              <Button onClick={() => handleAddItems(selectedOrder.id, pendingItems)}>Confirmar inclusão</Button>
             </div>
           </Card>
         </div>
@@ -295,60 +263,131 @@ export default function BalcaoPage() {
   )
 }
 
-/** Mini-form para adicionar um item rapidamente */
-function InlineAddItem({ products, onAdd }: { products: Product[], onAdd: (it: OrderFormItem) => void }) {
-  const [p, setP] = useState<Product | null>(null)
-  const [qtd, setQtd] = useState(1)
-  const [local, setLocal] = useState<"balcao" | "cozinha">("balcao")
+/**
+ * Catálogo agrupado por grupo, com botões “Adicionar” por produto.
+ * O local_preparo vem do próprio produto (sem escolha manual).
+ */
+function CatalogAddItems({
+  products,
+  pendingItems,
+  setPendingItems,
+}: {
+  products: Product[]
+  pendingItems: OrderFormItem[]
+  setPendingItems: (items: OrderFormItem[]) => void
+}) {
+  // Agrupa por grupo
+  const byGroup = useMemo(() => {
+    const map = new Map<string, Product[]>()
+    for (const p of products) {
+      const g = p.grupo || "Outros"
+      if (!map.has(g)) map.set(g, [])
+      map.get(g)!.push(p)
+    }
+    // ordena produtos por nome dentro do grupo (já vem ordenado, mas garantimos)
+    for (const [, arr] of map) arr.sort((a, b) => a.nome.localeCompare(b.nome))
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0])) // ordena grupos
+  }, [products])
+
+  const add = (prod: Product) => {
+    const idx = pendingItems.findIndex((i) => i.produto_id === prod.id)
+    if (idx >= 0) {
+      const clone = [...pendingItems]
+      clone[idx] = { ...clone[idx], quantidade: clone[idx].quantidade + 1 }
+      setPendingItems(clone)
+    } else {
+      setPendingItems([
+        ...pendingItems,
+        {
+          produto_id: prod.id,
+          produto_nome: prod.nome,
+          produto_preco: Number(prod.preco),
+          quantidade: 1,
+          local_preparo: prod.local_preparo as "balcao" | "cozinha",
+        },
+      ])
+    }
+  }
+
+  const dec = (prodId: string) => {
+    const idx = pendingItems.findIndex((i) => i.produto_id === prodId)
+    if (idx < 0) return
+    const clone = [...pendingItems]
+    const q = clone[idx].quantidade - 1
+    if (q <= 0) {
+      clone.splice(idx, 1)
+    } else {
+      clone[idx] = { ...clone[idx], quantidade: q }
+    }
+    setPendingItems(clone)
+  }
+
+  const totalParcial = useMemo(
+    () => pendingItems.reduce((acc, it) => acc + Number(it.produto_preco) * Number(it.quantidade), 0),
+    [pendingItems]
+  )
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-      <select
-        className="border rounded px-3 py-2"
-        value={p?.id || ""}
-        onChange={(e) => {
-          const found = products.find((x) => x.id === e.target.value) || null
-          setP(found)
-        }}
-      >
-        <option value="">Selecione um produto</option>
-        {products.map((prod) => (
-          <option key={prod.id} value={prod.id}>
-            {prod.nome} — R$ {Number((prod as any).preco || prod.preco).toFixed(2)}
-          </option>
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      {/* Lista agrupada */}
+      <div className="xl:col-span-2 space-y-4 max-h-[60vh] overflow-auto pr-2">
+        {byGroup.map(([grupo, arr]) => (
+          <Card key={grupo} className="p-4">
+            <div className="mb-3 font-semibold">{grupo}</div>
+            <div className="divide-y">
+              {arr.map((p) => {
+                const current = pendingItems.find((i) => i.produto_id === p.id)
+                return (
+                  <div key={p.id} className="py-2 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{p.nome}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {p.local_preparo === "cozinha" ? "Cozinha" : "Balcão"}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-sm font-semibold">R$ {Number(p.preco).toFixed(2)}</div>
+                      <div className="flex items-center gap-2">
+                        {current && (
+                          <Button size="icon" variant="outline" onClick={() => dec(p.id)}>
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button onClick={() => add(p)}>
+                          <Plus className="h-4 w-4 mr-1" /> Adicionar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
         ))}
-      </select>
+      </div>
 
-      <input
-        type="number"
-        min={1}
-        value={qtd}
-        onChange={(e) => setQtd(Number(e.target.value || 1))}
-        className="border rounded px-3 py-2"
-      />
-
-      <select className="border rounded px-3 py-2" value={local} onChange={(e) => setLocal(e.target.value as any)}>
-        <option value="balcao">Balcão</option>
-        <option value="cozinha">Cozinha</option>
-      </select>
-
-      <Button
-        onClick={() => {
-          if (!p) return
-          onAdd({
-            produto_id: p.id,
-            produto_nome: p.nome,
-            produto_preco: Number((p as any).preco || p.preco),
-            quantidade: qtd,
-            local_preparo: local,
-          })
-          setP(null)
-          setQtd(1)
-          setLocal("balcao")
-        }}
-      >
-        <Plus className="h-4 w-4 mr-1" /> Adicionar
-      </Button>
+      {/* Resumo rápido */}
+      <Card className="p-4 h-fit xl:sticky xl:top-0">
+        <div className="font-semibold mb-3">Resumo (pré-inclusão)</div>
+        {pendingItems.length === 0 ? (
+          <div className="text-sm text-muted-foreground">Nenhum item selecionado.</div>
+        ) : (
+          <>
+            <ul className="text-sm space-y-2 max-h-[40vh] overflow-auto pr-1">
+              {pendingItems.map((i) => (
+                <li key={i.produto_id} className="flex justify-between gap-3">
+                  <span className="truncate">{i.quantidade}× {i.produto_nome}</span>
+                  <span>R$ {(Number(i.produto_preco) * Number(i.quantidade)).toFixed(2)}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 flex items-center justify-between font-semibold">
+              <span>Total parcial</span>
+              <span>R$ {totalParcial.toFixed(2)}</span>
+            </div>
+          </>
+        )}
+      </Card>
     </div>
   )
 }

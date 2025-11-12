@@ -8,8 +8,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Payload inválido" }, { status: 400 })
     }
 
-    const urlCozinha = process.env.N8N_WEBHOOK_BALCAO_ADICIONAR_ITENS_COZINHA
-    const urlBalcao = process.env.N8N_WEBHOOK_BALCAO_ADICIONAR_ITENS_BALCAO
+    // 🚨 INVERTIDO AQUI DE PROPÓSITO, PORQUE O N8N ESTÁ COM OS WEBHOOKS CONTRÁRIOS
+    const urlCozinha = process.env.N8N_WEBHOOK_BALCAO_ADICIONAR_ITENS_BALCAO   // <- cozinha de verdade
+    const urlBalcao  = process.env.N8N_WEBHOOK_BALCAO_ADICIONAR_ITENS_COZINHA // <- balcão de verdade
 
     if (!urlCozinha || !urlBalcao) {
       return NextResponse.json(
@@ -18,13 +19,12 @@ export async function POST(req: Request) {
       )
     }
 
-    // separa os itens
     const cozinhaItems = body.items.filter((i) => i.local_preparo === "cozinha")
-    const balcaoItems = body.items.filter((i) => i.local_preparo === "balcao")
+    const balcaoItems  = body.items.filter((i) => i.local_preparo === "balcao")
 
     const results: any[] = []
 
-    // envia os dois em paralelo
+    // Itens de COZINHA → enviar para o webhook REAL da cozinha (que hoje está no BALCAO)
     if (cozinhaItems.length > 0) {
       const res = await fetch(urlCozinha, {
         method: "POST",
@@ -34,6 +34,7 @@ export async function POST(req: Request) {
       results.push({ cozinha: await res.text() })
     }
 
+    // Itens de BALCÃO → enviar para o webhook REAL do balcão (que hoje está no COZINHA)
     if (balcaoItems.length > 0) {
       const res = await fetch(urlBalcao, {
         method: "POST",
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true, results })
+
   } catch (err: any) {
     console.error("Erro ao adicionar itens:", err)
     return NextResponse.json({ error: err.message || "Erro interno" }, { status: 500 })

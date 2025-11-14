@@ -24,7 +24,7 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
     tipo: "",
     preco: "",
     ingredientes: "",
-    local_preparo: "balcao",
+    local_preparo: "cozinha",
   })
 
   const [isTypeManagerOpen, setIsTypeManagerOpen] = useState(false)

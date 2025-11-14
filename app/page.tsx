@@ -26,7 +26,7 @@ export default function Home() {
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            </Link>
+
             <Link href="/cozinha">
               <Button size="lg" variant="outline" className="gap-2 w-full sm:w-auto bg-transparent">
                 <ShoppingBag className="h-4 w-4" />
@@ -38,8 +38,8 @@ export default function Home() {
 
           <div className="pt-8 border-t">
             <p className="text-sm text-muted-foreground">
-              <strong>Funcionalidades:</strong> Cadastro de produtos, registro de pedidos presenciais, organização por
-              categorias, exportação para PDF e CSV
+              <strong>Funcionalidades:</strong> Cadastro de produtos, registro de pedidos presenciais,
+              organização por categorias, exportação para PDF e CSV
             </p>
           </div>
         </div>

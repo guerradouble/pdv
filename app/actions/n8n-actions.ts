@@ -1,17 +1,5 @@
 "use server";
 
-/* ✅ Enviar item para a Cozinha */
-export async function enviarItemParaCozinha(payload: any) {
-  const url = process.env.N8N_WEBHOOK_COZINHA;
-  if (!url) return console.error("❌ N8N_WEBHOOK_COZINHA não configurado");
-
-  await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-}
-
 /* ✅ Cadastrar Produto */
 export async function cadastrarProdutoWebHook(payload: any) {
   const url = process.env.N8N_WEBHOOK_CADASTRAR;
@@ -45,18 +33,6 @@ export async function deletarProdutoWebHook(id: string) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id }),
-  });
-}
-
-/* ✅ Atualizar Status da Cozinha */
-export async function atualizarStatusCozinha(payload: any) {
-  const url = process.env.N8N_WEBHOOK_ATUALIZA_STATUS;
-  if (!url) return console.error("❌ N8N_WEBHOOK_ATUALIZA_STATUS não configurado");
-
-  await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
   });
 }
 

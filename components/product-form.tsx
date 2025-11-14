@@ -10,7 +10,7 @@ import { X, Settings2 } from "lucide-react"
 import type { Product } from "@/types/product"
 import { TypeManagerModal } from "./type-manager-modal"
 import { useProductTypes } from "@/hooks/use-product-types"
-import { cadastrarProdutoWebHook, editarProdutoWebHook } from "@/app/actions/n8n-actions"
+import { cadastrarProdutoWebHook, editarProdutoWebHook } from "@/lib/n8n"
 
 interface ProductFormProps {
   product?: Product | null
@@ -38,7 +38,6 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
         ingredientes: product.ingredientes || "",
       })
     } else if (types.length > 0 && !formData.tipo) {
-      // define o primeiro tipo como padrão
       setFormData((prev) => ({ ...prev, tipo: types[0] }))
     }
   }, [product, types])
@@ -75,8 +74,7 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
     <>
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
         <div className="bg-card rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-          
-          {/* Header */}
+
           <div className="flex items-center justify-between p-6 border-b">
             <h2 className="text-xl font-semibold">
               {product ? "Editar Produto" : "Adicionar Produto"}
@@ -86,7 +84,6 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
             </Button>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
 
             {/* Nome */}
@@ -151,7 +148,6 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
               />
             </div>
 
-            {/* Footer */}
             <div className="flex gap-3 pt-4">
               <Button type="button" variant="outline" onClick={onClose} className="flex-1">
                 Cancelar
@@ -165,7 +161,7 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
         </div>
       </div>
 
-      {/* Modal de tipos */}
+      {/* Modal para editar tipos */}
       {isTypeManagerOpen && (
         <TypeManagerModal
           types={types}

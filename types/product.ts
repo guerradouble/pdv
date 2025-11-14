@@ -7,12 +7,12 @@ export interface Product {
   disponivel: boolean
   descricao?: string | null
   imagem_url?: string | null
-  grupo: string                 // ✅ novo campo
-  local_preparo: "balcao" | "cozinha"  // ✅ novo campo
+  grupo: string
+  ingredientes?: string | null
+  tipo: string
   created_at?: string
   updated_at?: string
 }
-
 
 export interface ProductFormData {
   tipo: TipoProduto

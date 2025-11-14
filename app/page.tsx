@@ -26,12 +26,6 @@ export default function Home() {
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link href="/balcao">
-              <Button size="lg" variant="outline" className="gap-2 w-full sm:w-auto bg-transparent">
-                <ShoppingBag className="h-4 w-4" />
-                Balcão - Pedidos
-                <ArrowRight className="h-4 w-4" />
-              </Button>
             </Link>
             <Link href="/cozinha">
               <Button size="lg" variant="outline" className="gap-2 w-full sm:w-auto bg-transparent">

@@ -24,8 +24,6 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
     tipo: "",
     preco: "",
     ingredientes: "",
-    // 🔥 sempre "cozinha"
-    local_preparo: "cozinha",
   })
 
   const [isTypeManagerOpen, setIsTypeManagerOpen] = useState(false)
@@ -38,10 +36,9 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
         tipo: product.tipo,
         preco: product.preco.toString().replace(".", ","),
         ingredientes: product.ingredientes || "",
-        // 🔥 força "cozinha" sempre
-        local_preparo: product.local_preparo || "cozinha",
       })
     } else if (types.length > 0 && !formData.tipo) {
+      // define o primeiro tipo como padrão
       setFormData((prev) => ({ ...prev, tipo: types[0] }))
     }
   }, [product, types])
@@ -61,10 +58,6 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
       tipo: formData.tipo,
       preco: Number(formData.preco.replace(",", ".")),
       ingredientes: formData.ingredientes.trim() || null,
-
-      // 🔥 SEMPRE "cozinha", independente do usuário
-      local_preparo: "cozinha",
-
       disponivel: product?.disponivel ?? true,
     }
 
@@ -83,6 +76,7 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
         <div className="bg-card rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
           
+          {/* Header */}
           <div className="flex items-center justify-between p-6 border-b">
             <h2 className="text-xl font-semibold">
               {product ? "Editar Produto" : "Adicionar Produto"}
@@ -92,6 +86,7 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
             </Button>
           </div>
 
+          {/* Form */}
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
 
             {/* Nome */}
@@ -156,8 +151,7 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
               />
             </div>
 
-            {/* 🔥 CAMPO REMOVIDO: Local de preparo */}
-
+            {/* Footer */}
             <div className="flex gap-3 pt-4">
               <Button type="button" variant="outline" onClick={onClose} className="flex-1">
                 Cancelar
@@ -171,6 +165,7 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
         </div>
       </div>
 
+      {/* Modal de tipos */}
       {isTypeManagerOpen && (
         <TypeManagerModal
           types={types}

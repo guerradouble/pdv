@@ -23,25 +23,24 @@ export async function n8nFetch(urlEnvVar: string, payload: any) {
   }
 }
 
-/** Cardápio */
+/* CADASTRAR PRODUTO */
 export async function cadastrarProdutoWebHook(data: {
   nome: string; 
   tipo: string; 
   preco: number;
   ingredientes?: string | null;
-  local_preparo: "balcao" | "cozinha";
   disponivel: boolean;
 }) {
   return n8nFetch("N8N_WEBHOOK_CADASTRAR", data);
 }
 
+/* EDITAR PRODUTO */
 export async function editarProdutoWebHook(data: {
   id: string;
   nome?: string; 
   tipo?: string; 
   preco?: number;
   ingredientes?: string | null; 
-  local_preparo?: "balcao" | "cozinha"; 
   disponivel?: boolean;
 }) {
   return n8nFetch("N8N_WEBHOOK_EDITAR", data);
@@ -50,4 +49,3 @@ export async function editarProdutoWebHook(data: {
 export async function deletarProdutoWebHook(id: string) {
   return n8nFetch("N8N_WEBHOOK_DELETAR", { id });
 }
-

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { X, Settings2, Store, UtensilsCrossed } from "lucide-react"
+import { X, Settings2 } from "lucide-react"
 import type { Product } from "@/types/product"
 import { TypeManagerModal } from "./type-manager-modal"
 import { useProductTypes } from "@/hooks/use-product-types"
@@ -24,6 +24,7 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
     tipo: "",
     preco: "",
     ingredientes: "",
+    // 🔥 sempre "cozinha"
     local_preparo: "cozinha",
   })
 
@@ -35,9 +36,10 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
       setFormData({
         nome: product.nome,
         tipo: product.tipo,
-        preco: product.preco.toString().replace(".", ","), // ✅ agora recebemos decimal puro
+        preco: product.preco.toString().replace(".", ","),
         ingredientes: product.ingredientes || "",
-        local_preparo: product.local_preparo || "balcao",
+        // 🔥 força "cozinha" sempre
+        local_preparo: product.local_preparo || "cozinha",
       })
     } else if (types.length > 0 && !formData.tipo) {
       setFormData((prev) => ({ ...prev, tipo: types[0] }))
@@ -49,15 +51,20 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
 
     if (!formData.nome.trim()) return alert("Preencha o nome do produto")
     if (!formData.tipo) return alert("Selecione um tipo")
-    if (!formData.preco || Number(formData.preco.replace(",", ".")) <= 0) return alert("Preço inválido")
+    if (!formData.preco || Number(formData.preco.replace(",", ".")) <= 0) {
+      return alert("Preço inválido")
+    }
 
     const payload = {
       ...(product && { id: product.id }),
       nome: formData.nome.trim(),
       tipo: formData.tipo,
-      preco: Number(formData.preco.replace(",", ".")), // ✅ SALVA DIRETO COMO DECIMAL
+      preco: Number(formData.preco.replace(",", ".")),
       ingredientes: formData.ingredientes.trim() || null,
-      local_preparo: formData.local_preparo,
+
+      // 🔥 SEMPRE "cozinha", independente do usuário
+      local_preparo: "cozinha",
+
       disponivel: product?.disponivel ?? true,
     }
 
@@ -87,27 +94,49 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
 
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
 
+            {/* Nome */}
             <div className="space-y-2">
               <Label>Nome *</Label>
-              <Input value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} />
+              <Input
+                value={formData.nome}
+                onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+              />
             </div>
 
+            {/* Tipo */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Tipo *</Label>
-                <Button type="button" variant="outline" size="sm" onClick={() => setIsTypeManagerOpen(true)} className="gap-1 h-8 px-2 text-xs">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsTypeManagerOpen(true)}
+                  className="gap-1 h-8 px-2 text-xs"
+                >
                   <Settings2 className="h-3 w-3" /> Editar Tipo
                 </Button>
               </div>
 
-              <Select value={formData.tipo} onValueChange={(value) => setFormData({ ...formData, tipo: value })}>
-                <SelectTrigger><SelectValue placeholder="Selecione um tipo" /></SelectTrigger>
+              <Select
+                value={formData.tipo}
+                onValueChange={(value) => setFormData({ ...formData, tipo: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um tipo" />
+                </SelectTrigger>
+
                 <SelectContent>
-                  {types.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                  {types.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
+            {/* Preço */}
             <div className="space-y-2">
               <Label>Preço (R$) *</Label>
               <Input
@@ -117,25 +146,25 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
               />
             </div>
 
+            {/* Ingredientes */}
             <div className="space-y-2">
               <Label>Ingredientes</Label>
-              <Textarea value={formData.ingredientes} onChange={(e) => setFormData({ ...formData, ingredientes: e.target.value })} rows={3} />
+              <Textarea
+                value={formData.ingredientes}
+                onChange={(e) => setFormData({ ...formData, ingredientes: e.target.value })}
+                rows={3}
+              />
             </div>
 
-            <div className="space-y-2">
-              <Label>Local de Preparo *</Label>
-              <Select value={formData.local_preparo} onValueChange={(value) => setFormData({ ...formData, local_preparo: value })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="balcao"><Store className="h-4 w-4" /> Balcão</SelectItem>
-                  <SelectItem value="cozinha"><UtensilsCrossed className="h-4 w-4" /> Cozinha</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* 🔥 CAMPO REMOVIDO: Local de preparo */}
 
             <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
-              <Button type="submit" className="flex-1">{product ? "Salvar" : "Adicionar"}</Button>
+              <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+                Cancelar
+              </Button>
+              <Button type="submit" className="flex-1">
+                {product ? "Salvar" : "Adicionar"}
+              </Button>
             </div>
 
           </form>

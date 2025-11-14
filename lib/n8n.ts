@@ -51,22 +51,3 @@ export async function deletarProdutoWebHook(id: string) {
   return n8nFetch("N8N_WEBHOOK_DELETAR", { id });
 }
 
-/** Balcão → Cozinha */
-export async function enviarItemParaCozinha(payload: {
-  pedido_id: string;
-  produto_id: string;
-  produto_nome: string;
-  quantidade?: number;
-  mesa?: string | null;
-  cliente_nome?: string | null;
-}) {
-  return n8nFetch("N8N_WEBHOOK_COZINHA", payload);
-}
-
-/** Atualizar status da cozinha */
-export async function atualizarStatusCozinha(payload: {
-  id: string;
-  status: "a_fazer" | "em_preparo" | "pronto";
-}) {
-  return n8nFetch("N8N_WEBHOOK_ATUALIZA_STATUS", payload);
-}

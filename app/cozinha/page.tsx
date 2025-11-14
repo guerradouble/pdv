@@ -1,134 +1,240 @@
+// app/cozinha/page.tsx
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter } from "@dnd-kit/core"
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
-import { restrictToWindowEdges } from "@dnd-kit/modifiers"
-import { Card } from "@/components/ui/card"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { ArrowLeft, Clock, UtensilsCrossed, Truck } from "lucide-react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
-import { atualizarStatusCozinha } from "@/lib/n8n"
-import { cn } from "@/lib/utils"
 
-type Status = "a_fazer" | "em_preparo" | "pronto"
+type StatusPedido = "pendente" | "em_preparo" | "saiu_para_entrega" | "finalizado"
 
-type CozinhaItem = {
+type CozinhaPedido = {
   id: string
-  pedido_id: string
-  produto_id: string
-  produto_nome: string
-  quantidade: number
-  mesa: string | null
+  numero_pedido: string | null
   cliente_nome: string | null
-  status: Status
-  created_at?: string
-}
-
-const COLUMNS = [
-  { id: "a_fazer", title: "Novos" },
-  { id: "em_preparo", title: "Em Preparo" },
-  { id: "pronto", title: "Pronto" },
-]
-
-function KdsCard({ item }: { item: CozinhaItem }) {
-  return (
-    <Card className={cn("p-3 bg-card/70 shadow-sm border border-border", "hover:shadow-md transition-shadow")}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="font-semibold leading-tight">
-            {item.produto_nome}{" "}
-            <span className="text-xs text-muted-foreground">x{item.quantidade}</span>
-          </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            {item.cliente_nome ? `Cliente: ${item.cliente_nome}` : "Cliente: Balcão"}
-            {item.mesa ? ` • Mesa ${item.mesa}` : ""}
-          </div>
-        </div>
-        <div className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-          #{(item.pedido_id || "").slice(0, 6)}
-        </div>
-      </div>
-    </Card>
-  )
-}
-
-function KdsColumn({ title, id, items }: { title: string; id: Status; items: CozinhaItem[] }) {
-  return (
-    <div className="flex flex-col gap-3 h-full">
-      <div className="sticky top-0 z-10 bg-background/80 py-2 backdrop-blur">
-        <h2 className="text-sm font-semibold uppercase text-muted-foreground">{title}</h2>
-      </div>
-
-      <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <div className="grid gap-3 auto-rows-min min-h-[200px] rounded-lg border border-dashed border-muted-foreground/20 p-2">
-          {items.length === 0
-            ? <div className="text-center text-xs text-muted-foreground py-8">Sem itens aqui</div>
-            : items.map((item) => <KdsCard key={item.id} item={item} />)}
-        </div>
-      </SortableContext>
-    </div>
-  )
+  cliente_telefone: string | null
+  endereco: string | null
+  produtos: any
+  valor_total: number | null
+  status: StatusPedido
+  created_at: string | null
 }
 
 export default function CozinhaPage() {
   const supabase = getSupabaseBrowserClient()
-  const [items, setItems] = useState<CozinhaItem[]>([])
+  const [pedidos, setPedidos] = useState<CozinhaPedido[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
-
-  const load = async () => {
+  async function load() {
     setIsLoading(true)
-    const { data } = await supabase.from("cozinha_itens").select("*").order("created_at", { ascending: true })
-    if (data) setItems(data as CozinhaItem[])
-    setIsLoading(false)
+    try {
+      const { data, error } = await supabase
+        .from("pedidos")
+        .select("id, numero_pedido, cliente_nome, cliente_telefone, endereco, produtos, valor_total, status, created_at")
+        .in("status", ["pendente", "em_preparo", "saiu_para_entrega"])
+        .order("created_at", { ascending: true })
+
+      if (error) throw error
+
+      setPedidos((data || []) as CozinhaPedido[])
+    } catch (err) {
+      console.error("Erro ao carregar pedidos da cozinha:", err)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   useEffect(() => {
     load()
+
     const channel = supabase
-      .channel("cozinha_realtime_kds")
-      .on("postgres_changes", { event: "*", schema: "public", table: "cozinha_itens" }, () => load())
+      .channel("cozinha_pedidos_realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pedidos" },
+        () => {
+          // sempre que um pedido mudar, recarrega a lista
+          load()
+        },
+      )
       .subscribe()
-    return () => supabase.removeChannel(channel)
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
-  const grouped = useMemo(() => {
-    const g: Record<Status, CozinhaItem[]> = { a_fazer: [], em_preparo: [], pronto: [] }
-    for (const it of items) g[it.status].push(it)
-    return g
-  }, [items])
+  const agrupado = useMemo(() => {
+    return {
+      pendentes: pedidos.filter((p) => p.status === "pendente"),
+      emPreparo: pedidos.filter((p) => p.status === "em_preparo"),
+      saindo: pedidos.filter((p) => p.status === "saiu_para_entrega"),
+    }
+  }, [pedidos])
 
-  const onDragEnd = async (event: DragEndEvent) => {}
+  function formatarProdutos(produtos: any): string[] {
+    if (!produtos) return []
+
+    // Se já for array de strings ou objetos
+    if (Array.isArray(produtos)) {
+      return produtos.map((p: any) => {
+        if (typeof p === "string") return p
+        if (p.nome && p.quantidade) return `${p.quantidade}x ${p.nome}`
+        if (p.nome) return p.nome
+        return JSON.stringify(p)
+      })
+    }
+
+    // Se for string única (caso antigo)
+    if (typeof produtos === "string") {
+      return produtos
+        .split(/[\n;]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    }
+
+    // Qualquer outra coisa: JSON.stringify
+    return [JSON.stringify(produtos)]
+  }
+
+  function formatarTelefone(tel: string | null) {
+    if (!tel) return ""
+    return tel
+  }
+
+  function formatarTempo(created_at: string | null) {
+    if (!created_at) return ""
+    const criado = new Date(created_at)
+    const diffMs = Date.now() - criado.getTime()
+    const minutos = Math.floor(diffMs / 60000)
+    if (minutos < 1) return "agora"
+    if (minutos === 1) return "há 1 min"
+    return `há ${minutos} min`
+  }
+
+  function Coluna({
+    titulo,
+    descricao,
+    pedidos,
+    icon,
+  }: {
+    titulo: string
+    descricao: string
+    pedidos: CozinhaPedido[]
+    icon: React.ReactNode
+  }) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h2 className="text-sm font-semibold uppercase text-muted-foreground flex items-center gap-2">
+              {icon}
+              {titulo}
+            </h2>
+            <p className="text-xs text-muted-foreground">{descricao}</p>
+          </div>
+          <span className="text-xs text-muted-foreground">{pedidos.length} pedidos</span>
+        </div>
+
+        {pedidos.length === 0 && (
+          <div className="text-xs text-muted-foreground border border-dashed rounded-lg p-4 text-center">
+            Nenhum pedido aqui
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3">
+          {pedidos.map((p) => {
+            const produtos = formatarProdutos(p.produtos)
+            return (
+              <Card key={p.id} className="p-3 bg-card/70 shadow-sm border border-border">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col gap-1">
+                    <div className="text-xs text-muted-foreground">
+                      #{p.numero_pedido || p.id.slice(0, 6)} • {formatarTempo(p.created_at)}
+                    </div>
+                    <div className="font-semibold text-sm">
+                      {p.cliente_nome || "Cliente não identificado"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatarTelefone(p.cliente_telefone)}
+                    </div>
+                    {p.endereco && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {p.endereco}
+                      </div>
+                    )}
+                    <div className="mt-2 space-y-1">
+                      {produtos.map((linha, idx) => (
+                        <div key={idx} className="text-xs">
+                          {linha}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-xs font-semibold">
+                    {p.valor_total != null ? `R$ ${p.valor_total.toFixed(2)}` : ""}
+                  </div>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-5 flex items-center justify-between">
-
-          {/* ✅ Botão de Voltar Adicionado */}
-          <Button variant="outline" size="sm" onClick={() => window.history.back()}>
-            ← Voltar
-          </Button>
-
-          <h1 className="text-xl font-semibold">Cozinha</h1>
-
-          <Button variant="outline" onClick={load} disabled={isLoading}>
-            Recarregar
-          </Button>
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Link href="/">
+              <Button variant="outline" size="icon">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-lg font-semibold flex items-center gap-2">
+                <UtensilsCrossed className="h-5 w-5" />
+                Cozinha – Pedidos de Delivery
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                Lendo diretamente da tabela <code>pedidos</code> (WhatsApp / Delivery)
+              </p>
+            </div>
+          </div>
+          {isLoading && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              Atualizando...
+            </span>
+          )}
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} modifiers={[restrictToWindowEdges]}>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {COLUMNS.map((col) => (
-              <div key={col.id} className="min-h-[70vh]">
-                <KdsColumn id={col.id} title={col.title} items={grouped[col.id]} />
-              </div>
-            ))}
-          </div>
-        </DndContext>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Coluna
+            titulo="Novos"
+            descricao="Pedidos pendentes"
+            pedidos={agrupado.pendentes}
+            icon={<Clock className="h-4 w-4" />}
+          />
+          <Coluna
+            titulo="Em Preparo"
+            descricao="Pedidos em andamento"
+            pedidos={agrupado.emPreparo}
+            icon={<UtensilsCrossed className="h-4 w-4" />}
+          />
+          <Coluna
+            titulo="Saindo para entrega"
+            descricao="Pedidos já prontos / em rota"
+            pedidos={agrupado.saindo}
+            icon={<Truck className="h-4 w-4" />}
+          />
+        </div>
       </main>
     </div>
   )

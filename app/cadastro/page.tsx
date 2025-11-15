@@ -58,21 +58,20 @@ export default function CadastroPage() {
 
   return (
     <div className="p-4 space-y-4">
-      
-      {/* HEADER AJUSTADO — exatamente como solicitado */}
+
+      {/* HEADER NA MESMA LINHA — exatamente como solicitado */}
       <Card className="p-3 flex items-center justify-between">
-        
-        {/* Botão VOLTAR — canto esquerdo */}
-        <Link href="/" className="mr-4">
+
+        {/* Esquerda */}
+        <Link href="/">
           <Button variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
           </Button>
         </Link>
 
-        {/* Botão NOVO PRODUTO — centralizado entre Voltar e o Título */}
+        {/* Centro */}
         <Button
-          className="mx-auto"
           onClick={() => {
             setEditingProduct(null)
             setIsFormOpen(true)
@@ -82,11 +81,11 @@ export default function CadastroPage() {
           Novo produto
         </Button>
 
-        {/* Título — agora maior e alinhado à direita */}
+        {/* Direita — Título aumentado */}
         <h1 className="text-3xl font-bold text-right whitespace-nowrap">
           Cadastro de Produtos
         </h1>
-        
+
       </Card>
 
       {/* LISTA — não alterada */}
@@ -112,7 +111,7 @@ export default function CadastroPage() {
         )}
       </Card>
 
-      {/* MODAL — intacto */}
+      {/* MODAL — intocado */}
       {isFormOpen && (
         <ProductForm
           product={editingProduct}

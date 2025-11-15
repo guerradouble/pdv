@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Plus } from "lucide-react"
+import { Plus, ArrowLeft } from "lucide-react"
 import { ProductForm } from "@/components/product-form"
 import { ProductCard } from "@/components/product-card"
 import type { Product } from "@/types/product"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { deletarProdutoWebHook } from "@/app/actions/n8n-actions"
+import Link from "next/link"
 
 export default function CadastroPage() {
   const supabase = getSupabaseBrowserClient()
@@ -39,7 +40,6 @@ export default function CadastroPage() {
 
   useEffect(() => {
     loadProducts()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function handleEdit(product: Product) {
@@ -49,11 +49,7 @@ export default function CadastroPage() {
 
   async function handleDelete(id: string) {
     try {
-      // 🔥 ÚNICA ALTERAÇÃO REAL:
-      // O front NÃO deleta no Supabase. Só aciona o webhook.
       await deletarProdutoWebHook(id)
-
-      // remove localmente da interface
       setProducts((prev) => prev.filter((p) => p.id !== id))
     } catch (err) {
       console.error("Erro ao deletar produto via webhook:", err)
@@ -62,12 +58,21 @@ export default function CadastroPage() {
 
   return (
     <div className="p-4 space-y-4">
+      
+      {/* HEADER AJUSTADO — exatamente como solicitado */}
+      <Card className="p-3 flex items-center justify-between">
+        
+        {/* Botão VOLTAR — canto esquerdo */}
+        <Link href="/" className="mr-4">
+          <Button variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Button>
+        </Link>
 
-      {/* Header original — sem mexer */}
-      <Card className="p-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Cadastro de Produtos</h1>
-
+        {/* Botão NOVO PRODUTO — centralizado entre Voltar e o Título */}
         <Button
+          className="mx-auto"
           onClick={() => {
             setEditingProduct(null)
             setIsFormOpen(true)
@@ -76,9 +81,15 @@ export default function CadastroPage() {
           <Plus className="mr-2 h-4 w-4" />
           Novo produto
         </Button>
+
+        {/* Título — agora maior e alinhado à direita */}
+        <h1 className="text-3xl font-bold text-right whitespace-nowrap">
+          Cadastro de Produtos
+        </h1>
+        
       </Card>
 
-      {/* Lista de produtos — igual ao original */}
+      {/* LISTA — não alterada */}
       <Card className="p-4">
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando produtos...</p>
@@ -101,7 +112,7 @@ export default function CadastroPage() {
         )}
       </Card>
 
-      {/* Modal — original */}
+      {/* MODAL — intacto */}
       {isFormOpen && (
         <ProductForm
           product={editingProduct}

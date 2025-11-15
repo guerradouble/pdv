@@ -50,19 +50,18 @@ export default function CadastroPage() {
   async function handleDelete(id: string) {
     try {
       await deletarProdutoWebHook(id)
-      setProducts((prev) => prev.filter((p) => p.id !== id))
+      setProducts(prev => prev.filter(p => p.id !== id))
     } catch (err) {
-      console.error("Erro ao deletar produto via webhook:", err)
+      console.error("Erro ao deletar via webhook:", err)
     }
   }
 
   return (
     <div className="p-4 space-y-4">
 
-      {/* HEADER NA MESMA LINHA — exatamente como solicitado */}
-      <Card className="p-3 flex items-center justify-between">
+      {/* HEADER CENTRALIZADO PERFEITO */}
+      <Card className="p-3 flex items-center justify-center gap-10">
 
-        {/* Esquerda */}
         <Link href="/">
           <Button variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -70,7 +69,6 @@ export default function CadastroPage() {
           </Button>
         </Link>
 
-        {/* Centro */}
         <Button
           onClick={() => {
             setEditingProduct(null)
@@ -81,14 +79,12 @@ export default function CadastroPage() {
           Novo produto
         </Button>
 
-        {/* Direita — Título aumentado */}
-        <h1 className="text-3xl font-bold text-right whitespace-nowrap">
+        <h1 className="text-3xl font-bold whitespace-nowrap">
           Cadastro de Produtos
         </h1>
 
       </Card>
 
-      {/* LISTA — não alterada */}
       <Card className="p-4">
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando produtos...</p>
@@ -98,7 +94,7 @@ export default function CadastroPage() {
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {products.map((product) => (
+            {products.map(product => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -111,7 +107,6 @@ export default function CadastroPage() {
         )}
       </Card>
 
-      {/* MODAL — intocado */}
       {isFormOpen && (
         <ProductForm
           product={editingProduct}

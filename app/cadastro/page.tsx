@@ -50,41 +50,52 @@ export default function CadastroPage() {
   async function handleDelete(id: string) {
     try {
       await deletarProdutoWebHook(id)
-      setProducts(prev => prev.filter(p => p.id !== id))
+      setProducts((prev) => prev.filter((p) => p.id !== id))
     } catch (err) {
-      console.error("Erro ao deletar via webhook:", err)
+      console.error("Erro ao deletar produto via webhook:", err)
     }
   }
 
   return (
     <div className="p-4 space-y-4">
 
-      {/* HEADER CENTRALIZADO PERFEITO */}
-      <Card className="p-3 flex items-center justify-center gap-10">
+      {/* ======================= HEADER FINAL ======================= */}
+      <Card className="p-3 flex flex-nowrap items-center justify-between">
 
-        <Link href="/">
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
+        {/* ESQUERDA – Voltar */}
+        <div className="flex-shrink-0">
+          <Link href="/">
+            <Button variant="outline">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar
+            </Button>
+          </Link>
+        </div>
+
+        {/* CENTRO – Novo produto */}
+        <div className="flex-grow flex justify-center">
+          <Button
+            onClick={() => {
+              setEditingProduct(null)
+              setIsFormOpen(true)
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Novo produto
           </Button>
-        </Link>
+        </div>
 
-        <Button
-          onClick={() => {
-            setEditingProduct(null)
-            setIsFormOpen(true)
-          }}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Novo produto
-        </Button>
-
-        <h1 className="text-3xl font-bold whitespace-nowrap">
-          Cadastro de Produtos
-        </h1>
+        {/* DIREITA – Título */}
+        <div className="flex-shrink-0">
+          <h1 className="text-3xl font-bold whitespace-nowrap">
+            Cadastro de Produtos
+          </h1>
+        </div>
 
       </Card>
+      {/* ======================= FIM DO HEADER ======================= */}
 
+      {/* LISTA – totalmente intacta */}
       <Card className="p-4">
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando produtos...</p>
@@ -94,7 +105,7 @@ export default function CadastroPage() {
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {products.map(product => (
+            {products.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -107,6 +118,7 @@ export default function CadastroPage() {
         )}
       </Card>
 
+      {/* MODAL – intacto */}
       {isFormOpen && (
         <ProductForm
           product={editingProduct}

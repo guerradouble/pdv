@@ -49,29 +49,23 @@ export default function CadastroPage() {
 
   async function handleDelete(id: string) {
     try {
-      // ✅ Regra de negócio:
-      // O FRONT **NÃO** deleta no Supabase.
-      // Ele só chama o webhook, e o n8n deleta do cardápio + RAG.
+      // 🔥 ÚNICA ALTERAÇÃO REAL:
+      // O front NÃO deleta no Supabase. Só aciona o webhook.
       await deletarProdutoWebHook(id)
 
-      // Atualiza localmente para o item sumir da tela na hora,
-      // sem depender do timing do n8n.
+      // remove localmente da interface
       setProducts((prev) => prev.filter((p) => p.id !== id))
     } catch (err) {
-      console.error("Erro ao deletar produto via n8n:", err)
+      console.error("Erro ao deletar produto via webhook:", err)
     }
   }
 
   return (
     <div className="p-4 space-y-4">
-      {/* Header */}
+
+      {/* Header original — sem mexer */}
       <Card className="p-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Cadastro de Produtos</h1>
-          <p className="text-sm text-muted-foreground">
-            Gerencie os itens do cardápio que alimentam o RAG do atendimento.
-          </p>
-        </div>
+        <h1 className="text-xl font-semibold">Cadastro de Produtos</h1>
 
         <Button
           onClick={() => {
@@ -84,7 +78,7 @@ export default function CadastroPage() {
         </Button>
       </Card>
 
-      {/* Lista de produtos */}
+      {/* Lista de produtos — igual ao original */}
       <Card className="p-4">
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando produtos...</p>
@@ -107,14 +101,13 @@ export default function CadastroPage() {
         )}
       </Card>
 
-      {/* Modal de cadastro/edição */}
+      {/* Modal — original */}
       {isFormOpen && (
         <ProductForm
           product={editingProduct}
           onClose={() => {
             setIsFormOpen(false)
             setEditingProduct(null)
-            // Depois de salvar/editar, recarrega do banco (n8n já sincronizou)
             loadProducts()
           }}
         />

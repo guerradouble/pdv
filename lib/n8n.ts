@@ -52,6 +52,7 @@ export async function deletarProdutoWebHook(id: string) {
 
 /* STATUS DO PEDIDO – COZINHA */
 export async function atualizarStatusPedidoWebHook(data: {
+  id: string;
   numero_pedido: string;
   cliente_nome: string;
   cliente_telefone: string;
@@ -59,3 +60,4 @@ export async function atualizarStatusPedidoWebHook(data: {
 }) {
   return n8nFetch("N8N_WEBHOOK_STATUS_PEDIDO", data);
 }
+

@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ArrowLeft, Clock, UtensilsCrossed, Truck } from "lucide-react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { atualizarStatusPedidoWebHook } from "@/lib/n8n"
 
 type StatusPedido = "pendente" | "em_preparo" | "saiu_para_entrega" | "finalizado"
+type StatusAcao = "em_preparo" | "saiu_para_entrega" | "finalizado"
 
 type CozinhaPedido = {
   id: string
@@ -26,6 +28,7 @@ export default function CozinhaPage() {
   const supabase = getSupabaseBrowserClient()
   const [pedidos, setPedidos] = useState<CozinhaPedido[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   async function load() {
     setIsLoading(true)
@@ -114,16 +117,42 @@ export default function CozinhaPage() {
     return `há ${minutos} min`
   }
 
+  async function handleStatus(pedido: CozinhaPedido, acao: StatusAcao) {
+    if (!pedido.numero_pedido || !pedido.cliente_telefone || !pedido.cliente_nome) {
+      console.error("Pedido sem dados suficientes para enviar status:", pedido)
+      window.alert("Pedido sem dados de cliente ou número. Não foi possível atualizar o status.")
+      return
+    }
+
+    try {
+      setUpdatingId(pedido.id)
+      await atualizarStatusPedidoWebHook({
+        numero_pedido: pedido.numero_pedido,
+        cliente_nome: pedido.cliente_nome,
+        cliente_telefone: pedido.cliente_telefone,
+        status: acao,
+      })
+      // Não atualizamos manualmente a lista: o realtime do Supabase cuida disso
+    } catch (err) {
+      console.error("Erro ao enviar status do pedido para o webhook:", err)
+      window.alert("Erro ao atualizar status do pedido. Tente novamente.")
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
   function Coluna({
     titulo,
     descricao,
     pedidos,
     icon,
+    tipo,
   }: {
     titulo: string
     descricao: string
     pedidos: CozinhaPedido[]
     icon: React.ReactNode
+    tipo: "pendente" | "em_preparo" | "saiu_para_entrega"
   }) {
     return (
       <div className="flex flex-col gap-3">
@@ -147,6 +176,8 @@ export default function CozinhaPage() {
         <div className="flex flex-col gap-3">
           {pedidos.map((p) => {
             const produtos = formatarProdutos(p.produtos)
+            const isUpdating = updatingId === p.id
+
             return (
               <Card key={p.id} className="p-3 bg-card/70 shadow-sm border border-border">
                 <div className="flex items-start justify-between gap-3">
@@ -167,14 +198,60 @@ export default function CozinhaPage() {
                     )}
                     <div className="mt-2 space-y-1">
                       {produtos.map((linha, idx) => (
-                        <div key={idx} className="text-xs">
+                        <div
+                          key={idx}
+                          className="text-sm font-semibold text-red-500"
+                        >
                           {linha}
                         </div>
                       ))}
                     </div>
                   </div>
-                  <div className="text-xs font-semibold">
-                    {p.valor_total != null ? `R$ ${p.valor_total.toFixed(2)}` : ""}
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="text-xs font-semibold">
+                      {p.valor_total != null ? `R$ ${p.valor_total.toFixed(2)}` : ""}
+                    </div>
+
+                    {tipo === "pendente" && (
+                      <Button
+                        size="sm"
+                        className="text-xs"
+                        disabled={isUpdating}
+                        onClick={() => handleStatus(p, "em_preparo")}
+                      >
+                        {isUpdating ? "Atualizando..." : "Em Preparo"}
+                      </Button>
+                    )}
+
+                    {tipo === "em_preparo" && (
+                      <Button
+                        size="sm"
+                        className="text-xs"
+                        disabled={isUpdating}
+                        onClick={() => handleStatus(p, "saiu_para_entrega")}
+                      >
+                        {isUpdating ? "Atualizando..." : "Saiu para Entrega"}
+                      </Button>
+                    )}
+
+                    {tipo === "saiu_para_entrega" && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="text-xs"
+                        disabled={isUpdating}
+                        onClick={() => {
+                          const senha = window.prompt("Digite a senha para excluir o pedido:")
+                          if (senha !== "2504") {
+                            window.alert("Senha incorreta.")
+                            return
+                          }
+                          handleStatus(p, "finalizado")
+                        }}
+                      >
+                        {isUpdating ? "Atualizando..." : "Excluir"}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -207,7 +284,7 @@ export default function CozinhaPage() {
           </div>
           {isLoading && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3 w-3" />
+              <Clock className="h-3 w-3 animate-spin" />
               Atualizando...
             </span>
           )}
@@ -218,21 +295,24 @@ export default function CozinhaPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Coluna
             titulo="Novos"
-            descricao="Pedidos pendentes"
+            descricao="Pedidos recém-chegados"
             pedidos={agrupado.pendentes}
             icon={<Clock className="h-4 w-4" />}
+            tipo="pendente"
           />
           <Coluna
-            titulo="Em Preparo"
+            titulo="Em preparo"
             descricao="Pedidos em andamento"
             pedidos={agrupado.emPreparo}
             icon={<UtensilsCrossed className="h-4 w-4" />}
+            tipo="em_preparo"
           />
           <Coluna
             titulo="Saindo para entrega"
             descricao="Pedidos já prontos / em rota"
             pedidos={agrupado.saindo}
             icon={<Truck className="h-4 w-4" />}
+            tipo="saiu_para_entrega"
           />
         </div>
       </main>

@@ -57,32 +57,36 @@ export default function CadastroPage() {
     }
   }
 
+  // ================================
+  // 🚀 UPLOAD EM UMA ÚNICA REQUISIÇÃO
+  // ================================
   async function uploadCardapio(files: FileList | File[]) {
     const list = Array.from(files)
 
     setIsUploadingCardapio(true)
     try {
-      await Promise.all(
-        list.map(async (file) => {
-          const formData = new FormData()
-          formData.append("file", file)
+      const formData = new FormData()
 
-          const res = await fetch(
-            "https://n8n.doubleguerra.pro/webhook/cardapio-upload",
-            {
-              method: "POST",
-              body: formData,
-            },
-          )
+      // manda tudo no mesmo POST
+      for (const file of list) {
+        formData.append("files", file)
+      }
 
-          if (!res.ok) {
-            const text = await res.text().catch(() => "")
-            throw new Error(
-              `Falha ao enviar ${file.name} (status ${res.status}): ${text}`,
-            )
-          }
-        }),
+      const res = await fetch(
+        "https://n8n.doubleguerra.pro/webhook/cardapio-upload",
+        {
+          method: "POST",
+          body: formData,
+        }
       )
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "")
+        throw new Error(
+          `Falha ao enviar imagens do cardápio (status ${res.status}): ${text}`
+        )
+      }
+
       console.log("Imagens do cardápio enviadas com sucesso")
     } catch (error) {
       console.error("Erro ao enviar imagens do cardápio:", error)
@@ -100,6 +104,7 @@ export default function CadastroPage() {
 
   return (
     <div className="p-4 space-y-4">
+
       {/* ======================= HEADER ======================= */}
       <Card className="p-3 flex flex-nowrap items-center justify-between">
         

@@ -18,6 +18,7 @@ export default function CadastroPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isUploadingCardapio, setIsUploadingCardapio] = useState(false)
 
   async function loadProducts() {
     setIsLoading(true)
@@ -56,13 +57,43 @@ export default function CadastroPage() {
     }
   }
 
+  async function handleUploadCardapioImages(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    const formData = new FormData()
+    Array.from(files).forEach((file) => {
+      formData.append("images", file)
+    })
+
+    try {
+      setIsUploadingCardapio(true)
+
+      const res = await fetch("https://SEU_N8N_URL/webhook/cardapio-upload", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!res.ok) {
+        console.error("Erro ao enviar imagens do cardápio:", await res.text())
+        alert("Erro ao enviar imagens do cardápio.")
+      } else {
+        alert("Imagens do cardápio enviadas com sucesso!")
+      }
+    } catch (err) {
+      console.error("Erro ao enviar imagens do cardápio:", err)
+      alert("Erro ao enviar imagens do cardápio.")
+    } finally {
+      setIsUploadingCardapio(false)
+      e.target.value = ""
+    }
+  }
+
   return (
     <div className="p-4 space-y-4">
 
-      {/* ======================= HEADER FINAL ======================= */}
       <Card className="p-3 flex flex-nowrap items-center justify-between">
 
-        {/* ESQUERDA – Voltar */}
         <div className="flex-shrink-0">
           <Link href="/">
             <Button variant="outline">
@@ -72,20 +103,44 @@ export default function CadastroPage() {
           </Link>
         </div>
 
-        {/* CENTRO – Novo produto */}
         <div className="flex-grow flex justify-center">
-          <Button
-            onClick={() => {
-              setEditingProduct(null)
-              setIsFormOpen(true)
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Novo produto
-          </Button>
+          <div className="flex gap-2">
+
+            <Button
+              onClick={() => {
+                setEditingProduct(null)
+                setIsFormOpen(true)
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Novo produto
+            </Button>
+
+            <div>
+              <input
+                type="file"
+                id="inputCardapioImages"
+                className="hidden"
+                multiple
+                accept="image/*"
+                onChange={handleUploadCardapioImages}
+              />
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  document.getElementById("inputCardapioImages")?.click()
+                }
+                disabled={isUploadingCardapio}
+              >
+                {isUploadingCardapio ? "Enviando..." : "Selecionar Imagens"}
+              </Button>
+            </div>
+
+          </div>
         </div>
 
-        {/* DIREITA – Título */}
         <div className="flex-shrink-0">
           <h1 className="text-3xl font-bold whitespace-nowrap">
             Cadastro de Produtos
@@ -93,9 +148,7 @@ export default function CadastroPage() {
         </div>
 
       </Card>
-      {/* ======================= FIM DO HEADER ======================= */}
 
-      {/* LISTA – totalmente intacta */}
       <Card className="p-4">
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando produtos...</p>
@@ -118,7 +171,6 @@ export default function CadastroPage() {
         )}
       </Card>
 
-      {/* MODAL – intacto */}
       {isFormOpen && (
         <ProductForm
           product={editingProduct}

@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select"
 import { X, Settings2 } from "lucide-react"
 import type { Product } from "@/types/product"
 import { TypeManagerModal } from "./type-manager-modal"
@@ -28,6 +34,21 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
 
   const [isTypeManagerOpen, setIsTypeManagerOpen] = useState(false)
   const { types, isLoading, addType, deleteType } = useProductTypes()
+
+  // ==================== IMAGENS DO CARDÁPIO ====================
+  const [imagens, setImagens] = useState<File[]>([])
+  const [preview, setPreview] = useState<string[]>([])
+
+  function handleImagesChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
+    if (!files) return
+
+    const arr = Array.from(files)
+
+    setImagens(arr)
+    setPreview(arr.map((f) => URL.createObjectURL(f)))
+  }
+  // ==============================================================
 
   useEffect(() => {
     if (product) {
@@ -60,11 +81,34 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
       disponivel: product?.disponivel ?? true,
     }
 
+    let produtoIdSalvo: string | null = null
+
     if (product) {
       await editarProdutoWebHook(payload)
+      produtoIdSalvo = product.id
     } else {
-      await cadastrarProdutoWebHook(payload)
+      const res = await cadastrarProdutoWebHook(payload)
+      produtoIdSalvo = res?.id || null
     }
+
+    // =================== ENVIO DAS IMAGENS PARA O N8N ===================
+    try {
+      if (imagens.length > 0 && produtoIdSalvo) {
+        const formDataUpload = new FormData()
+
+        formDataUpload.append("produto_id", produtoIdSalvo)
+
+        imagens.forEach((file) => formDataUpload.append("images", file))
+
+        await fetch("https://SEU_N8N_URL/webhook/upload-cardapio", {
+          method: "POST",
+          body: formDataUpload,
+        })
+      }
+    } catch (err) {
+      console.error("Erro ao enviar imagens:", err)
+    }
+    // ====================================================================
 
     onClose()
     onRefresh?.()
@@ -79,7 +123,12 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
             <h2 className="text-xl font-semibold">
               {product ? "Editar Produto" : "Adicionar Produto"}
             </h2>
-            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="h-8 w-8 p-0"
+            >
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -91,7 +140,9 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
               <Label>Nome *</Label>
               <Input
                 value={formData.nome}
-                onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, nome: e.target.value })
+                }
               />
             </div>
 
@@ -112,7 +163,9 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
 
               <Select
                 value={formData.tipo}
-                onValueChange={(value) => setFormData({ ...formData, tipo: value })}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, tipo: value })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione um tipo" />
@@ -134,7 +187,9 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
               <Input
                 type="text"
                 value={formData.preco}
-                onChange={(e) => setFormData({ ...formData, preco: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, preco: e.target.value })
+                }
               />
             </div>
 
@@ -143,13 +198,56 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
               <Label>Ingredientes</Label>
               <Textarea
                 value={formData.ingredientes}
-                onChange={(e) => setFormData({ ...formData, ingredientes: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, ingredientes: e.target.value })
+                }
                 rows={3}
               />
             </div>
 
+            {/* Upload de Imagens */}
+            <div className="space-y-2">
+              <Label>Imagens do Cardápio</Label>
+
+              <input
+                type="file"
+                id="inputImages"
+                className="hidden"
+                multiple
+                accept="image/*"
+                onChange={handleImagesChange}
+              />
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  document.getElementById("inputImages")?.click()
+                }
+              >
+                Selecionar Imagens
+              </Button>
+
+              {preview.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+                  {preview.map((src, i) => (
+                    <img
+                      key={i}
+                      src={src}
+                      className="rounded-md border h-24 w-full object-cover"
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="flex-1"
+              >
                 Cancelar
               </Button>
               <Button type="submit" className="flex-1">
@@ -161,7 +259,6 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
         </div>
       </div>
 
-      {/* Modal para editar tipos */}
       {isTypeManagerOpen && (
         <TypeManagerModal
           types={types}

@@ -69,7 +69,7 @@ export default function CadastroPage() {
     try {
       setIsUploadingCardapio(true)
 
-      const res = await fetch("https://SEU_N8N_URL/webhook/cardapio-upload", {
+      const res = await fetch(process.env.NEXT_PUBLIC_CARDAPIO_UPLOAD_URL!, {
         method: "POST",
         body: formData,
       })

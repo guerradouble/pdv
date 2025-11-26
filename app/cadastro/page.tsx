@@ -3,7 +3,7 @@
 import { useState, useEffect, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Plus, ArrowLeft } from "lucide-react"
+import { Plus, ArrowLeft, ImageIcon } from "lucide-react"
 import { ProductForm } from "@/components/product-form"
 import { ProductCard } from "@/components/product-card"
 import type { Product } from "@/types/product"
@@ -65,7 +65,7 @@ export default function CadastroPage() {
       await Promise.all(
         list.map(async (file) => {
           const formData = new FormData()
-          formData.append("file", file) // TEM QUE ser "file"
+          formData.append("file", file)
 
           const res = await fetch(
             "https://n8n.doubleguerra.pro/webhook/cardapio-upload",
@@ -95,7 +95,6 @@ export default function CadastroPage() {
   async function handleCardapioChange(e: ChangeEvent<HTMLInputElement>) {
     if (!e.target.files || e.target.files.length === 0) return
     await uploadCardapio(e.target.files)
-    // limpa o input pra permitir enviar os mesmos arquivos de novo, se precisar
     e.target.value = ""
   }
 
@@ -103,6 +102,7 @@ export default function CadastroPage() {
     <div className="p-4 space-y-4">
       {/* ======================= HEADER ======================= */}
       <Card className="p-3 flex flex-nowrap items-center justify-between">
+        
         {/* ESQUERDA – Voltar */}
         <div className="flex-shrink-0">
           <Link href="/">
@@ -113,8 +113,10 @@ export default function CadastroPage() {
           </Link>
         </div>
 
-        {/* CENTRO – Novo produto */}
-        <div className="flex-grow flex justify-center">
+        {/* CENTRO – Ações */}
+        <div className="flex-shrink flex gap-2 items-center">
+
+          {/* Botão novo produto */}
           <Button
             onClick={() => {
               setEditingProduct(null)
@@ -124,39 +126,41 @@ export default function CadastroPage() {
             <Plus className="mr-2 h-4 w-4" />
             Novo produto
           </Button>
+
+          {/* Botão enviar cardápio */}
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isUploadingCardapio}
+            onClick={() => {
+              document.getElementById("cardapio-upload")?.click()
+            }}
+          >
+            <ImageIcon className="mr-2 h-4 w-4" />
+            {isUploadingCardapio ? "Enviando..." : "Cardápio (imagens)"}
+          </Button>
+
+          {/* Input invisível */}
+          <input
+            id="cardapio-upload"
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleCardapioChange}
+          />
         </div>
 
-        {/* DIREITA – Título + botão de cardápio (sem mudar posição do título) */}
-        <div className="flex-shrink-0 flex flex-col items-end gap-2">
+        {/* DIREITA – Título */}
+        <div className="flex-shrink-0">
           <h1 className="text-3xl font-bold whitespace-nowrap">
             Cadastro de Produtos
           </h1>
-
-          <div className="flex items-center gap-2">
-            <input
-              id="cardapio-upload"
-              type="file"
-              multiple
-              className="hidden"
-              onChange={handleCardapioChange}
-            />
-            <label htmlFor="cardapio-upload">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isUploadingCardapio}
-              >
-                {isUploadingCardapio
-                  ? "Enviando imagens do cardápio..."
-                  : "Enviar imagens do cardápio"}
-              </Button>
-            </label>
-          </div>
         </div>
+
       </Card>
       {/* ======================= FIM DO HEADER ======================= */}
 
-      {/* LISTA – totalmente intacta */}
+      {/* LISTA – intacta */}
       <Card className="p-4">
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando produtos...</p>
@@ -179,7 +183,7 @@ export default function CadastroPage() {
         )}
       </Card>
 
-      {/* MODAL – intacto */}
+      {/* MODAL */}
       {isFormOpen && (
         <ProductForm
           product={editingProduct}

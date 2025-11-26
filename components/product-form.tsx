@@ -35,21 +35,6 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
   const [isTypeManagerOpen, setIsTypeManagerOpen] = useState(false)
   const { types, isLoading, addType, deleteType } = useProductTypes()
 
-  // ==================== IMAGENS DO CARDÁPIO ====================
-  const [imagens, setImagens] = useState<File[]>([])
-  const [preview, setPreview] = useState<string[]>([])
-
-  function handleImagesChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files
-    if (!files) return
-
-    const arr = Array.from(files)
-
-    setImagens(arr)
-    setPreview(arr.map((f) => URL.createObjectURL(f)))
-  }
-  // ==============================================================
-
   useEffect(() => {
     if (product) {
       setFormData({
@@ -81,34 +66,11 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
       disponivel: product?.disponivel ?? true,
     }
 
-    let produtoIdSalvo: string | null = null
-
     if (product) {
       await editarProdutoWebHook(payload)
-      produtoIdSalvo = product.id
     } else {
-      const res = await cadastrarProdutoWebHook(payload)
-      produtoIdSalvo = res?.id || null
+      await cadastrarProdutoWebHook(payload)
     }
-
-    // =================== ENVIO DAS IMAGENS PARA O N8N ===================
-    try {
-      if (imagens.length > 0 && produtoIdSalvo) {
-        const formDataUpload = new FormData()
-
-        formDataUpload.append("produto_id", produtoIdSalvo)
-
-        imagens.forEach((file) => formDataUpload.append("images", file))
-
-        await fetch("https://SEU_N8N_URL/webhook/upload-cardapio", {
-          method: "POST",
-          body: formDataUpload,
-        })
-      }
-    } catch (err) {
-      console.error("Erro ao enviar imagens:", err)
-    }
-    // ====================================================================
 
     onClose()
     onRefresh?.()
@@ -135,7 +97,6 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
 
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
 
-            {/* Nome */}
             <div className="space-y-2">
               <Label>Nome *</Label>
               <Input
@@ -146,7 +107,6 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
               />
             </div>
 
-            {/* Tipo */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Tipo *</Label>
@@ -181,7 +141,6 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
               </Select>
             </div>
 
-            {/* Preço */}
             <div className="space-y-2">
               <Label>Preço (R$) *</Label>
               <Input
@@ -193,7 +152,6 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
               />
             </div>
 
-            {/* Ingredientes */}
             <div className="space-y-2">
               <Label>Ingredientes</Label>
               <Textarea
@@ -203,42 +161,6 @@ export function ProductForm({ product, onClose, onRefresh }: ProductFormProps) {
                 }
                 rows={3}
               />
-            </div>
-
-            {/* Upload de Imagens */}
-            <div className="space-y-2">
-              <Label>Imagens do Cardápio</Label>
-
-              <input
-                type="file"
-                id="inputImages"
-                className="hidden"
-                multiple
-                accept="image/*"
-                onChange={handleImagesChange}
-              />
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  document.getElementById("inputImages")?.click()
-                }
-              >
-                Selecionar Imagens
-              </Button>
-
-              {preview.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
-                  {preview.map((src, i) => (
-                    <img
-                      key={i}
-                      src={src}
-                      className="rounded-md border h-24 w-full object-cover"
-                    />
-                  ))}
-                </div>
-              )}
             </div>
 
             <div className="flex gap-3 pt-4">

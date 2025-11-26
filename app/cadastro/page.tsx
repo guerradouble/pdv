@@ -64,24 +64,24 @@ export default function CadastroPage() {
     try {
       await Promise.all(
         list.map(async (file) => {
-        const formData = new FormData()
-        formData.append("file", file)
+          const formData = new FormData()
+          formData.append("file", file) // TEM QUE ser "file"
 
-        const res = await fetch(
-          "https://n8n.doubleguerra.pro/webhook/cardapio-upload",
-          {
-            method: "POST",
-            body: formData,
-          },
-        )
-
-        if (!res.ok) {
-          const text = await res.text().catch(() => "")
-          throw new Error(
-            `Falha ao enviar ${file.name} (status ${res.status}): ${text}`,
+          const res = await fetch(
+            "https://n8n.doubleguerra.pro/webhook/cardapio-upload",
+            {
+              method: "POST",
+              body: formData,
+            },
           )
-        }
-      }),
+
+          if (!res.ok) {
+            const text = await res.text().catch(() => "")
+            throw new Error(
+              `Falha ao enviar ${file.name} (status ${res.status}): ${text}`,
+            )
+          }
+        }),
       )
       console.log("Imagens do cardápio enviadas com sucesso")
     } catch (error) {
@@ -95,15 +95,14 @@ export default function CadastroPage() {
   async function handleCardapioChange(e: ChangeEvent<HTMLInputElement>) {
     if (!e.target.files || e.target.files.length === 0) return
     await uploadCardapio(e.target.files)
+    // limpa o input pra permitir enviar os mesmos arquivos de novo, se precisar
     e.target.value = ""
   }
 
   return (
     <div className="p-4 space-y-4">
-
-      {/* ======================= HEADER FINAL ======================= */}
+      {/* ======================= HEADER ======================= */}
       <Card className="p-3 flex flex-nowrap items-center justify-between">
-
         {/* ESQUERDA – Voltar */}
         <div className="flex-shrink-0">
           <Link href="/">
@@ -127,7 +126,7 @@ export default function CadastroPage() {
           </Button>
         </div>
 
-        {/* DIREITA – Título + upload de cardápio */}
+        {/* DIREITA – Título + botão de cardápio (sem mudar posição do título) */}
         <div className="flex-shrink-0 flex flex-col items-end gap-2">
           <h1 className="text-3xl font-bold whitespace-nowrap">
             Cadastro de Produtos
@@ -148,13 +147,12 @@ export default function CadastroPage() {
                 disabled={isUploadingCardapio}
               >
                 {isUploadingCardapio
-                  ? "Enviando cardápio..."
+                  ? "Enviando imagens do cardápio..."
                   : "Enviar imagens do cardápio"}
               </Button>
             </label>
           </div>
         </div>
-
       </Card>
       {/* ======================= FIM DO HEADER ======================= */}
 

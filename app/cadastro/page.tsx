@@ -20,7 +20,7 @@ export default function CadastroPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Modal de imagens
+  // Modal de imagens do cardápio
   const [isImagesOpen, setIsImagesOpen] = useState(false)
 
   async function loadProducts() {

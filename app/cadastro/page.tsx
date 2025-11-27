@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, type ChangeEvent } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Plus, ArrowLeft, ImageIcon } from "lucide-react"
@@ -10,6 +10,7 @@ import type { Product } from "@/types/product"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { deletarProdutoWebHook } from "@/app/actions/n8n-actions"
 import Link from "next/link"
+import { CardapioImagesModal } from "@/components/CardapioImagesModal"
 
 export default function CadastroPage() {
   const supabase = getSupabaseBrowserClient()
@@ -18,7 +19,9 @@ export default function CadastroPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [isUploadingCardapio, setIsUploadingCardapio] = useState(false)
+
+  // Modal de imagens
+  const [isImagesOpen, setIsImagesOpen] = useState(false)
 
   async function loadProducts() {
     setIsLoading(true)
@@ -57,51 +60,6 @@ export default function CadastroPage() {
     }
   }
 
-  // ================================
-  // 🚀 UPLOAD EM UMA ÚNICA REQUISIÇÃO
-  // ================================
-  async function uploadCardapio(files: FileList | File[]) {
-    const list = Array.from(files)
-
-    setIsUploadingCardapio(true)
-    try {
-      const formData = new FormData()
-
-      // manda tudo no mesmo POST
-      for (const file of list) {
-        formData.append("files", file)
-      }
-
-      const res = await fetch(
-        "https://n8n.doubleguerra.pro/webhook/cardapio-upload",
-        {
-          method: "POST",
-          body: formData,
-        }
-      )
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => "")
-        throw new Error(
-          `Falha ao enviar imagens do cardápio (status ${res.status}): ${text}`
-        )
-      }
-
-      console.log("Imagens do cardápio enviadas com sucesso")
-    } catch (error) {
-      console.error("Erro ao enviar imagens do cardápio:", error)
-      alert("Falha ao enviar imagens do cardápio. Tente novamente.")
-    } finally {
-      setIsUploadingCardapio(false)
-    }
-  }
-
-  async function handleCardapioChange(e: ChangeEvent<HTMLInputElement>) {
-    if (!e.target.files || e.target.files.length === 0) return
-    await uploadCardapio(e.target.files)
-    e.target.value = ""
-  }
-
   return (
     <div className="p-4 space-y-4">
 
@@ -132,27 +90,16 @@ export default function CadastroPage() {
             Novo produto
           </Button>
 
-          {/* Botão enviar cardápio */}
+          {/* Botão abrir modal de imagens */}
           <Button
             type="button"
             variant="outline"
-            disabled={isUploadingCardapio}
-            onClick={() => {
-              document.getElementById("cardapio-upload")?.click()
-            }}
+            onClick={() => setIsImagesOpen(true)}
           >
             <ImageIcon className="mr-2 h-4 w-4" />
-            {isUploadingCardapio ? "Enviando..." : "Cardápio (imagens)"}
+            Imagens do Cardápio
           </Button>
 
-          {/* Input invisível */}
-          <input
-            id="cardapio-upload"
-            type="file"
-            multiple
-            className="hidden"
-            onChange={handleCardapioChange}
-          />
         </div>
 
         {/* DIREITA – Título */}
@@ -188,7 +135,7 @@ export default function CadastroPage() {
         )}
       </Card>
 
-      {/* MODAL */}
+      {/* MODAL DE PRODUTOS */}
       {isFormOpen && (
         <ProductForm
           product={editingProduct}
@@ -198,6 +145,11 @@ export default function CadastroPage() {
             loadProducts()
           }}
         />
+      )}
+
+      {/* MODAL DE IMAGENS DO CARDÁPIO */}
+      {isImagesOpen && (
+        <CardapioImagesModal onClose={() => setIsImagesOpen(false)} />
       )}
     </div>
   )

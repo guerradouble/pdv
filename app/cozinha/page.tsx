@@ -17,7 +17,6 @@ type CozinhaPedido = {
   numero_pedido: string | null
   cliente_nome: string | null
   cliente_telefone: string | null
-  endereco: string | null
   produtos: any
   valor_total: number | null
   status: StatusPedido
@@ -35,7 +34,7 @@ export default function CozinhaPage() {
     try {
       const { data, error } = await supabase
         .from("pedidos")
-        .select("id, numero_pedido, cliente_nome, cliente_telefone, endereco, produtos, valor_total, status, created_at")
+        .select("id, numero_pedido, cliente_nome, cliente_telefone, produtos, valor_total, status, created_at")
         .in("status", ["pendente", "em_preparo", "saiu_para_entrega"])
         .order("created_at", { ascending: true })
 
@@ -58,7 +57,6 @@ export default function CozinhaPage() {
         "postgres_changes",
         { event: "*", schema: "public", table: "pedidos" },
         () => {
-          // sempre que um pedido mudar, recarrega a lista
           load()
         },
       )
@@ -80,7 +78,6 @@ export default function CozinhaPage() {
   function formatarProdutos(produtos: any): string[] {
     if (!produtos) return []
 
-    // Se já for array de strings ou objetos
     if (Array.isArray(produtos)) {
       return produtos.map((p: any) => {
         if (typeof p === "string") return p
@@ -90,7 +87,6 @@ export default function CozinhaPage() {
       })
     }
 
-    // Se for string única (caso antigo)
     if (typeof produtos === "string") {
       return produtos
         .split(/[\n;]/)
@@ -98,7 +94,6 @@ export default function CozinhaPage() {
         .filter(Boolean)
     }
 
-    // Qualquer outra coisa: JSON.stringify
     return [JSON.stringify(produtos)]
   }
 
@@ -132,7 +127,6 @@ export default function CozinhaPage() {
         cliente_telefone: pedido.cliente_telefone,
         status: acao,
       })
-      // Não atualizamos manualmente a lista: o realtime do Supabase cuida disso
     } catch (err) {
       console.error("Erro ao enviar status do pedido para o webhook:", err)
       window.alert("Erro ao atualizar status do pedido. Tente novamente.")
@@ -191,11 +185,9 @@ export default function CozinhaPage() {
                     <div className="text-xs text-muted-foreground">
                       {formatarTelefone(p.cliente_telefone)}
                     </div>
-                    {p.endereco && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {p.endereco}
-                      </div>
-                    )}
+
+                    {/* Endereço removido — entrega via localização */}
+
                     <div className="mt-2 space-y-1">
                       {produtos.map((linha, idx) => (
                         <div
@@ -207,6 +199,7 @@ export default function CozinhaPage() {
                       ))}
                     </div>
                   </div>
+
                   <div className="flex flex-col items-end gap-2">
                     <div className="text-xs font-semibold">
                       {p.valor_total != null ? `R$ ${p.valor_total.toFixed(2)}` : ""}

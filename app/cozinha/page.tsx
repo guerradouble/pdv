@@ -132,7 +132,7 @@ export default function CozinhaPage() {
 
       // 🔹 NOVO WEBHOOK — DISPARA SOMENTE EM "em_preparo"
       if (acao === "em_preparo") {
-        fetch("https://n8n.SEUDOMINIO/webhook/despacho-entrega", {
+        fetch(process.env.NEXT_PUBLIC_WEBHOOK_MOTOBOY_URL as string, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

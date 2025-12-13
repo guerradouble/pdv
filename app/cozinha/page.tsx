@@ -121,12 +121,29 @@ export default function CozinhaPage() {
 
     try {
       setUpdatingId(pedido.id)
+
+      // 🔹 WEBHOOK EXISTENTE (mantido intacto)
       await atualizarStatusPedidoWebHook({
         numero_pedido: pedido.numero_pedido,
         cliente_nome: pedido.cliente_nome,
         cliente_telefone: pedido.cliente_telefone,
         status: acao,
       })
+
+      // 🔹 NOVO WEBHOOK — DISPARA SOMENTE EM "em_preparo"
+      if (acao === "em_preparo") {
+        fetch("https://n8n.SEUDOMINIO/webhook/despacho-entrega", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            numero_pedido: pedido.numero_pedido,
+            cliente_nome: pedido.cliente_nome,
+            cliente_telefone: pedido.cliente_telefone,
+          }),
+        }).catch(() => {
+          // silêncio absoluto: não quebra o fluxo atual
+        })
+      }
     } catch (err) {
       console.error("Erro ao enviar status do pedido para o webhook:", err)
       window.alert("Erro ao atualizar status do pedido. Tente novamente.")
@@ -185,8 +202,6 @@ export default function CozinhaPage() {
                     <div className="text-xs text-muted-foreground">
                       {formatarTelefone(p.cliente_telefone)}
                     </div>
-
-                    {/* Endereço removido — entrega via localização */}
 
                     <div className="mt-2 space-y-1">
                       {produtos.map((linha, idx) => (

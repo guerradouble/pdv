@@ -36,8 +36,15 @@ export async function deletarProdutoWebHook(id: string) {
   });
 }
 
-/* ✅ Alternar Disponibilidade */
-export async function toggleDisponibilidadeWebHook(id: string, disponivel: boolean) {
+/* ✅ Alternar Disponibilidade (CORRIGIDO PARA N8N) */
+export async function toggleDisponibilidadeWebHook(payload: {
+  id: string;
+  nome: string;
+  tipo: string;
+  preco: number;
+  ingredientes?: string | null;
+  disponivel: boolean;
+}) {
   const url = process.env.N8N_WEBHOOK_TOGGLE_DISPONIVEL;
   if (!url) return console.error("❌ N8N_WEBHOOK_TOGGLE_DISPONIVEL não configurada");
 
@@ -45,8 +52,12 @@ export async function toggleDisponibilidadeWebHook(id: string, disponivel: boole
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      id,
-      disponivel,
+      id: payload.id,
+      nome: payload.nome,
+      tipo: payload.tipo,
+      preco: payload.preco,
+      ingredientes: payload.ingredientes ?? null,
+      disponivel: payload.disponivel,
       origem: "toggle_disponibilidade"
     }),
   });
@@ -67,4 +78,3 @@ export async function syncDisponibilidadeComWebhookEditar(id: string, disponivel
     }),
   });
 }
-

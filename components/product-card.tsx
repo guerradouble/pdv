@@ -19,49 +19,44 @@ export function ProductCard({ product, onEdit, onDelete, onRefresh }: ProductCar
 
   async function handleToggle() {
     startTransition(async () => {
-      await toggleDisponibilidadeWebHook(product.id, !product.disponivel)
+      await toggleDisponibilidadeWebHook({
+        id: product.id,
+        nome: product.nome,
+        tipo: product.tipo,
+        preco: product.preco,
+        ingredientes: product.ingredientes,
+        disponivel: !product.disponivel
+      })
       onRefresh()
     })
   }
 
-  const precoFormatado = `R$ ${Number(product.preco)
-    .toFixed(2)
-    .replace(".", ",")}`
-
   return (
-    <Card className="p-4 flex flex-col gap-3 border border-border bg-card/60 hover:bg-card/80 transition rounded-lg">
-      
-      {/* Nome + Preço */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-foreground">{product.nome}</h3>
-        <span className="text-sm font-medium text-primary">{precoFormatado}</span>
+    <Card className="p-4 flex justify-between items-center">
+      <div>
+        <h3 className="font-semibold">{product.nome}</h3>
+        <p className="text-sm text-muted-foreground">{product.tipo}</p>
+        <p className="text-sm">
+          R$ {product.preco.toFixed(2).replace(".", ",")}
+        </p>
       </div>
 
-      {/* Tipo */}
-      <p className="text-sm text-muted-foreground">{product.tipo}</p>
-
-      {/* Ingredientes */}
-      {product.ingredientes && (
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          {product.ingredientes}
-        </p>
-      )}
-
-      {/* Botões */}
-      <div className="flex items-center justify-between mt-3">
-        
+      <div className="flex gap-2">
         <Button
           size="sm"
+          variant={product.disponivel ? "default" : "outline"}
           disabled={isPending}
-          variant={product.disponivel ? "default" : "destructive"}
           onClick={handleToggle}
-          className="text-xs"
         >
-          {product.disponivel ? "Disponível" : "Em Falta"}
+          {product.disponivel ? "Disponível" : "Indisponível"}
         </Button>
 
         <div className="flex gap-2">
-          <Button size="icon" variant="outline" onClick={() => onEdit(product)}>
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={() => onEdit(product)}
+          >
             <Pencil className="h-4 w-4" />
           </Button>
 
@@ -74,7 +69,6 @@ export function ProductCard({ product, onEdit, onDelete, onRefresh }: ProductCar
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
-
       </div>
     </Card>
   )
